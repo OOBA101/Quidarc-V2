@@ -7,9 +7,9 @@ import { ImageWithFallback } from "./components/figma/ImageWithFallback";
 import quidarcLogo from "../imports/erasebg-transformed__62_.png";
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-// Was hardcoded to http://localhost:3001 — broke outside local dev. Both of
+// Was hardcoded to http://127.0.0.1:3001 — broke outside local dev. Both of
 // these need to be set in .env for staging/production (see .env.example).
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:3001";
 // Where "Launch App" sends people — the actual Quidarc app, a separate
 // deployable from this landing page. Update once the real domain is picked.
 const APP_URL = import.meta.env.VITE_APP_URL || "https://quidarc-v2-app-216m.vercel.app/";

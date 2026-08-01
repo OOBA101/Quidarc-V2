@@ -254,7 +254,7 @@ function App() {
         {
           id: `agent-err-${Date.now()}`,
           sender: 'agent',
-          text: 'Unable to reach backend agent service.',
+          text: '',
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
