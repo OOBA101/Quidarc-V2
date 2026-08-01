@@ -1,0 +1,19 @@
+{
+  "name": "quidarc-monorepo",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "app",
+    "frontend"
+  ],
+  "scripts": {
+    "dev:backend": "npm --workspace backend run dev",
+    "dev:app": "npm --workspace app run dev",
+    "dev:landing": "npm --workspace frontend run dev",
+    "build": "npm --workspace backend run build && npm --workspace app run build && npm --workspace frontend run build",
+    "test": "npm --workspace backend run test"
+  },
+  "dependencies": {
+    "validator": "^13.15.35"
+  }
+}
