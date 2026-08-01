@@ -12,7 +12,7 @@ import quidarcLogo from "../imports/erasebg-transformed__62_.png";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001";
 // Where "Launch App" sends people — the actual Quidarc app, a separate
 // deployable from this landing page. Update once the real domain is picked.
-const APP_URL = import.meta.env.VITE_APP_URL || "http://localhost:5173";
+const APP_URL = import.meta.env.VITE_APP_URL || "https://quidarc-v2-app-216m.vercel.app/";
 
 const NAV_LINKS = ["Home", "Features", "How It Works", "Roadmap", "FAQ"];
 
