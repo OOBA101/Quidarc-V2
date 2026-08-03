@@ -9,7 +9,9 @@ import { createContentRoutes } from './routes/content.js';
 import { createWaitlistRoutes } from "./routes/waitlist.js";
 import { createAuditRoutes } from './routes/audit.js';
 
-const app = Fastify({ logger: false });
+const app = Fastify({
+  logger: true,
+});
 
 async function registerHooks(server: FastifyInstance) {
   server.addHook('onRequest', async (request, reply) => {
@@ -39,7 +41,7 @@ async function start() {
 
   const port = Number(process.env.PORT) || 3001;
   await app.listen({ port, host: '0.0.0.0' });
-  console.log(`Quidarc backend listening on http://127.0.0.1:${port}`);
+  console.log(`Quidarc backend listening on http://0.0.0.0:${port}`);
 }
 
 start().catch((error) => {
