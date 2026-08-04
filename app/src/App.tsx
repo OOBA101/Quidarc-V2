@@ -11,6 +11,7 @@ import {
 import { signAndSendUsdcTransfer, USDC_DECIMALS } from './lib/arcChain';
 import { parseUnits } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
+import { API_BASE } from './lib/config';
 
 type PermissionCard = {
   id: string;
@@ -54,8 +55,6 @@ type ChatTurn = {
   text: string;
   timestamp: string;
 };
-
-const API_BASE = '/api';
 
 const AVAILABLE_ACTIONS = ['swap', 'transfer', 'bridge', 'claim'];
 

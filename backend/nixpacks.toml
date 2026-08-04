@@ -1,0 +1,10 @@
+# Nixpacks configuration for Railway deployment of Quidarc Backend
+
+[phases.setup]
+nixPkgs = ["nodejs"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+[start]
+cmd = "npm run start"
