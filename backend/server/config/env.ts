@@ -21,9 +21,10 @@ const envSchema = z.object({
   // AI Brain
   ANTHROPIC_API_KEY: z.string().optional().default(''),
 
-  // Security
-  JWT_SECRET: z.string().default('quidarc-dev-jwt-secret-key-change-in-prod'),
-  SESSION_SECRET: z.string().default('quidarc-dev-session-secret-key-change-in-prod'),
+  // CORS — comma-separated list of allowed browser origins (e.g.
+  // "https://app.quidarc.com,https://quidarc.com"). Empty by default; in
+  // development the server falls back to a permissive localhost policy.
+  CORS_ORIGINS: z.string().optional().default(''),
 })
   // Fail fast in production if we would otherwise fall back to insecure dev
   // defaults. Without this, a missing DATABASE_URL silently points the server
@@ -38,18 +39,11 @@ const envSchema = z.object({
         message: 'DATABASE_URL must be set to the production database in production (dev/localhost default is not allowed).',
       });
     }
-    if (val.JWT_SECRET.includes('dev-jwt-secret')) {
+    if (!val.CORS_ORIGINS.trim()) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ['JWT_SECRET'],
-        message: 'JWT_SECRET must be set to a secure value in production.',
-      });
-    }
-    if (val.SESSION_SECRET.includes('dev-session-secret')) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['SESSION_SECRET'],
-        message: 'SESSION_SECRET must be set to a secure value in production.',
+        path: ['CORS_ORIGINS'],
+        message: 'CORS_ORIGINS must list the allowed frontend origin(s) in production (wildcard is not used).',
       });
     }
   });

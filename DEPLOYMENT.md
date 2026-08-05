@@ -19,12 +19,11 @@ This repository contains a full monorepo with three workspaces:
 2. Select your repository and specify the **Root Directory** as `/backend`.
 3. In the service **Variables** tab, set the required environment variables:
    - `DATABASE_URL`: *(Your Railway PostgreSQL connection string — use the internal `*.railway.internal` URL when backend and DB share a project)*
-   - `NODE_ENV`: `production` *(required — enables SSL and fail-fast secret validation)*
+   - `NODE_ENV`: `production` *(required — enables SSL, CORS lockdown, and fail-fast validation)*
    - `ARC_RPC_URL`: `https://rpc.testnet.arc.network`
    - `CIRCLE_API_KEY`: *(Your Circle Developer-Controlled Wallets API key — optional until Phase 6)*
    - `ANTHROPIC_API_KEY`: *(Your Anthropic API key — optional until Phase 7)*
-   - `JWT_SECRET`: *(A secure random secret — the dev default is rejected in production)*
-   - `SESSION_SECRET`: *(A secure random secret — the dev default is rejected in production)*
+   - `CORS_ORIGINS`: *(Comma-separated allowed frontend origins, e.g. `https://your-app.vercel.app,https://your-landing.vercel.app`. Required in production.)*
    - Do **not** set `PORT` — Railway injects it automatically and the server binds it.
 
 ### Step 3: Migrations run automatically on boot
