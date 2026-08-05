@@ -11,7 +11,9 @@
     "db:migrate:prod": "node dist/server/db/migrate.js",
     "db:verify": "tsx server/db/verify.ts",
     "db:verify:prod": "node dist/server/db/verify.js",
-    "db:seed": "tsx server/db/seed.ts"
+    "db:seed": "tsx server/db/seed.ts",
+    "arc:verify": "tsx server/integrations/arc/verify.ts",
+    "arc:verify:prod": "node dist/server/integrations/arc/verify.js"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.2",

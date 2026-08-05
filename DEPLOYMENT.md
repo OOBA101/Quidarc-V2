@@ -60,13 +60,25 @@ DATABASE_URL="postgres://..." npm run db:verify
 ```
 The command exits non-zero and lists any missing objects if the schema is incomplete.
 
-### Step 6: Populate Demo Seed Data (Optional)
+### Step 6: Verify Arc Testnet Connectivity
+Confirm the backend can reach Arc Testnet at the configured RPC and that the
+USDC contract matches the app's assumptions (chain ID `5042002`, USDC `6` decimals):
+```bash
+npm run arc:verify:prod       # on Railway (compiled)
+# or, locally:
+npm run arc:verify
+```
+This is a live network check — it catches a wrong `ARC_RPC_URL` or mis-set
+`ARC_USDC_CONTRACT_ADDRESS` before it surfaces as a confusing balance/transfer
+bug. Exits non-zero on any mismatch or if the RPC is unreachable.
+
+### Step 7: Populate Demo Seed Data (Optional)
 Seed initial demo cards and waitlist records (idempotent — safe to re-run):
 ```bash
 npm run db:seed
 ```
 
-### Step 7: Deploy Frontend Web App on Vercel / Cloudflare
+### Step 8: Deploy Frontend Web App on Vercel / Cloudflare
 1. Create a new project on Vercel or Cloudflare Pages targeting `app/` (or `frontend/`).
 2. Set Environment Variable on Vercel:
    - `VITE_API_BASE_URL`: `https://quidarc-backend-production.up.railway.app/api` *(must include the `/api` path)*

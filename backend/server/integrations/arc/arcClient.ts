@@ -1,7 +1,8 @@
 import { createPublicClient, defineChain, formatEther, formatUnits, http, parseEther, parseUnits } from 'viem';
+import { env } from '../../config/env.js';
 
 export const ARC_TESTNET_CHAIN_ID = 5042002;
-export const DEFAULT_ARC_RPC_URL = process.env.ARC_RPC_URL || 'https://arc-testnet.rpc.thirdweb.com';
+export const DEFAULT_ARC_RPC_URL = env.ARC_RPC_URL;
 
 /**
  * Arc has a genuinely unusual dual-decimal design, confirmed against Arc's own
@@ -19,8 +20,7 @@ export const DEFAULT_ARC_RPC_URL = process.env.ARC_RPC_URL || 'https://arc-testn
  * app-level balance display, transfers, and Permission Card spend-limit math,
  * all of which need the ERC-20 interface below, not the native one.
  */
-export const ARC_TESTNET_USDC_CONTRACT = (process.env.ARC_USDC_CONTRACT_ADDRESS ||
-  '0x3600000000000000000000000000000000000000') as `0x${string}`;
+export const ARC_TESTNET_USDC_CONTRACT = env.ARC_USDC_CONTRACT_ADDRESS as `0x${string}`;
 
 export const USDC_DECIMALS = 6;
 export const NATIVE_DECIMALS = 18;
@@ -107,6 +107,22 @@ export async function getUsdcBalance(address: string, rpcUrl?: string) {
     abi: erc20Abi,
     functionName: 'balanceOf',
     args: [address as `0x${string}`],
+  });
+}
+
+// --- Connectivity / sanity reads — used by the arc:verify script to confirm we
+// are actually talking to Arc Testnet (chain 5042002) and that the configured
+// USDC contract reports the 6 decimals the app's math assumes. ---
+
+export async function getChainId(rpcUrl?: string) {
+  return getClient(rpcUrl).getChainId();
+}
+
+export async function getUsdcDecimals(rpcUrl?: string) {
+  return getClient(rpcUrl).readContract({
+    address: ARC_TESTNET_USDC_CONTRACT,
+    abi: erc20Abi,
+    functionName: 'decimals',
   });
 }
 

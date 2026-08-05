@@ -14,6 +14,9 @@ const envSchema = z.object({
   // Arc Blockchain
   ARC_RPC_URL: z.string().default('https://rpc.testnet.arc.network'),
   ARC_CHAIN_ID: z.string().optional().transform((val) => Number(val) || 5042002),
+  ARC_USDC_CONTRACT_ADDRESS: z
+    .string()
+    .default('0x3600000000000000000000000000000000000000'),
 
   // Circle API
   CIRCLE_API_KEY: z.string().optional().default(''),

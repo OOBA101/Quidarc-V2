@@ -10,7 +10,7 @@ import type { Account } from 'viem';
  * it. Worth consolidating later — if you change one, change both.
  */
 export const ARC_TESTNET_CHAIN_ID = 5042002;
-export const ARC_RPC_URL = import.meta.env.VITE_ARC_RPC_URL || 'https://arc-testnet.rpc.thirdweb.com';
+export const ARC_RPC_URL = import.meta.env.VITE_ARC_RPC_URL || 'https://rpc.testnet.arc.network';
 export const ARC_TESTNET_USDC_CONTRACT = (import.meta.env.VITE_ARC_USDC_CONTRACT_ADDRESS ||
   '0x3600000000000000000000000000000000000000') as `0x${string}`;
 export const USDC_DECIMALS = 6;
