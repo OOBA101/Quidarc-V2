@@ -5,7 +5,7 @@ export async function createWaitlistRoutes(server: FastifyInstance) {
 
     const waitlist = new WaitlistService();
 
-    server.post("/waitlist", async (request, reply) => {
+    server.post("/api/waitlist", async (request, reply) => {
 
         try {
 

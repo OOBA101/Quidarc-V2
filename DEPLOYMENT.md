@@ -70,7 +70,7 @@ npm run db:seed
 ### Step 7: Deploy Frontend Web App on Vercel / Cloudflare
 1. Create a new project on Vercel or Cloudflare Pages targeting `app/` (or `frontend/`).
 2. Set Environment Variable on Vercel:
-   - `VITE_API_BASE_URL`: `https://quidarc-backend-production.up.railway.app`
+   - `VITE_API_BASE_URL`: `https://quidarc-backend-production.up.railway.app/api` *(must include the `/api` path)*
 3. Deploy frontend.
 
 ---

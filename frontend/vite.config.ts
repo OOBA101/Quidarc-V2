@@ -31,6 +31,14 @@ export default defineConfig({
     },
   },
 
+  // Proxy API calls to the backend in development so the app can use the
+  // relative `/api` default without a VITE_API_BASE_URL. Mirrors app/vite.config.ts.
+  server: {
+    proxy: {
+      '/api': 'http://127.0.0.1:3001',
+    },
+  },
+
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
 })
