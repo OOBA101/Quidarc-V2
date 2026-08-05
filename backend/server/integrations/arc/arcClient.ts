@@ -66,7 +66,24 @@ const erc20Abi = [
   },
 ] as const;
 
+// The default-RPC client is the hot path (every balance read, every card
+// authorization check). Cache it as a module singleton rather than recreating
+// the HTTP transport on each request. The parameterized getClient() path stays
+// for arc:verify, which needs to test a custom RPC if supplied.
+let defaultClient: ReturnType<typeof createPublicClient> | null = null;
+
 function getClient(rpcUrl: string = DEFAULT_ARC_RPC_URL) {
+  if (rpcUrl === DEFAULT_ARC_RPC_URL) {
+    if (!defaultClient) {
+      defaultClient = createPublicClient({
+        chain: arcTestnet,
+        transport: http(normalizeRpcUrl(DEFAULT_ARC_RPC_URL)),
+      });
+    }
+    return defaultClient;
+  }
+
+  // Non-default RPC (arc:verify with a custom --rpc flag) — no caching.
   return createPublicClient({ chain: arcTestnet, transport: http(normalizeRpcUrl(rpcUrl)) });
 }
 
