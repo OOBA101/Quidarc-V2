@@ -4,10 +4,11 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server/index.ts",
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node scripts/postbuild.mjs",
     "start": "node dist/server/index.js",
     "test": "vitest run",
     "db:migrate": "tsx server/db/migrate.ts",
+    "db:migrate:prod": "node dist/server/db/migrate.js",
     "db:seed": "tsx server/db/seed.ts"
   },
   "dependencies": {

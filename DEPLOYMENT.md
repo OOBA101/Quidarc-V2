@@ -18,21 +18,22 @@ This repository contains a full monorepo with three workspaces:
 1. In the same Railway project, click **+ New** → **GitHub Repo** (or deploy via Railway CLI).
 2. Select your repository and specify the **Root Directory** as `/backend`.
 3. In the service **Variables** tab, set the required environment variables:
-   - `DATABASE_URL`: *(Your Railway PostgreSQL connection string)*
-   - `PORT`: `3001` (or leave default for Railway auto-assignment)
-   - `NODE_ENV`: `production`
+   - `DATABASE_URL`: *(Your Railway PostgreSQL connection string — use the internal `*.railway.internal` URL when backend and DB share a project)*
+   - `NODE_ENV`: `production` *(required — enables SSL and fail-fast secret validation)*
    - `ARC_RPC_URL`: `https://rpc.testnet.arc.network`
-   - `CIRCLE_API_KEY`: *(Your Circle Developer-Controlled Wallets API key)*
-   - `ANTHROPIC_API_KEY`: *(Your Anthropic API key)*
-   - `JWT_SECRET`: *(A secure random secret)*
-   - `SESSION_SECRET`: *(A secure random secret)*
+   - `CIRCLE_API_KEY`: *(Your Circle Developer-Controlled Wallets API key — optional until Phase 6)*
+   - `ANTHROPIC_API_KEY`: *(Your Anthropic API key — optional until Phase 7)*
+   - `JWT_SECRET`: *(A secure random secret — the dev default is rejected in production)*
+   - `SESSION_SECRET`: *(A secure random secret — the dev default is rejected in production)*
+   - Do **not** set `PORT` — Railway injects it automatically and the server binds it.
 
-### Step 3: Configure Railway Pre-Deploy Migrations
-1. In Railway under **Settings** → **Deploy** → **Pre-Deploy Command**, enter:
-   ```bash
-   npm run db:migrate
-   ```
-2. Deploy the backend service.
+### Step 3: Migrations run automatically on boot
+Database migrations run **in-process at server startup** (idempotent `CREATE ... IF NOT EXISTS`),
+so no pre-deploy command is required. The server applies the schema before it begins
+serving traffic and aborts the boot if the database is unreachable.
+
+> To run migrations manually (e.g. from the Railway shell) use the compiled entrypoint:
+> `npm run db:migrate:prod`. The `npm run db:migrate` script uses `tsx` and is for local dev only.
 
 ### Step 4: Verify Backend Health Probe
 1. Copy your deployed backend public URL (e.g. `https://quidarc-backend-production.up.railway.app`).

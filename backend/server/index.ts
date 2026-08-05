@@ -1,6 +1,8 @@
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
 
+import { env } from './config/env.js';
+import { runMigrations } from './db/migrate.js';
 import { createHealthRoutes } from './routes/health.js';
 import { createChatRoutes } from './routes/chat.js';
 import { createWalletRoutes } from './routes/wallet.js';
@@ -36,12 +38,15 @@ async function registerRoutes(server: FastifyInstance) {
 }
 
 async function start() {
+  // Apply the database schema before serving any traffic. Idempotent, so it is
+  // safe on every boot/restart and guarantees routes never hit missing tables.
+  await runMigrations();
+
   await registerHooks(app);
   await registerRoutes(app);
 
-  const port = Number(process.env.PORT) || 3001;
-  await app.listen({ port, host: '0.0.0.0' });
-  console.log(`Quidarc backend listening on http://0.0.0.0:${port}`);
+  await app.listen({ port: env.PORT, host: '0.0.0.0' });
+  console.log(`Quidarc backend listening on http://0.0.0.0:${env.PORT}`);
 }
 
 start().catch((error) => {
