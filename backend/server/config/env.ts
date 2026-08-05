@@ -27,8 +27,11 @@ const envSchema = z.object({
   CIRCLE_ENTITY_SECRET: z.string().optional().default(''),
   CIRCLE_WALLET_SET_ID: z.string().optional().default(''),
 
-  // AI Brain
+  // AI Brain — Anthropic Claude. ANTHROPIC_API_KEY is optional (blank runs the
+  // orchestrator in labeled-mock mode). ANTHROPIC_MODEL is configurable so the
+  // deployment is never pinned to a model ID that later gets deprecated.
   ANTHROPIC_API_KEY: z.string().optional().default(''),
+  ANTHROPIC_MODEL: z.string().optional().default('claude-sonnet-5'),
 
   // CORS — comma-separated list of allowed browser origins (e.g.
   // "https://app.quidarc.com,https://quidarc.com"). Empty by default; in
