@@ -4,6 +4,9 @@ import { OrchestrationService } from '../modules/orchestrator/orchestrationServi
 
 const chatInputSchema = z.object({
   message: z.string().min(1),
+  // Optional wallet address so the AI's read-only tools (balance, card list)
+  // have context. Never used for signing or execution — read-only lookups only.
+  walletAddress: z.string().optional(),
 });
 
 export const createChatRoutes: FastifyPluginAsync = async (fastify) => {
@@ -17,6 +20,8 @@ export const createChatRoutes: FastifyPluginAsync = async (fastify) => {
       return { error: 'Message is required.' };
     }
 
-    return orchestrationService.handleChat(parsed.data.message);
+    return orchestrationService.handleChat(parsed.data.message, {
+      walletAddress: parsed.data.walletAddress,
+    });
   });
 };

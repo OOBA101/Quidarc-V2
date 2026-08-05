@@ -1,35 +1,42 @@
+import { ClaudeClient } from '../../integrations/anthropic/claudeClient.js';
+
+interface HandleChatContext {
+  walletAddress?: string;
+}
+
+/**
+ * Orchestrates chat requests through Claude for intent classification and
+ * parameter extraction. This replaced the naive keyword-matcher — the AI now
+ * understands ambiguity and extracts structured parameters — but the response
+ * contract ({ reply, intent, confirmation }) is unchanged so the frontend flow
+ * (chat → confirmation → user approves → execute) still works as before.
+ *
+ * The AI is an intent recommender, NOT an executor. It proposes a `confirmation`
+ * object; the user confirms in the UI; execution then runs through the existing
+ * /execution/agent-action path under Permission Card authorization.
+ */
 export class OrchestrationService {
-  async handleChat(message: string) {
-    const normalized = message.toLowerCase();
+  constructor(private readonly claudeClient = new ClaudeClient()) {}
 
-    if (normalized.includes('swap')) {
-      return {
-        reply: 'Swap intent detected. Routed through the orchestrator boundary.',
-        intent: 'swap',
-        confirmation: { kind: 'swap', summary: message },
-      };
-    }
+  async handleChat(message: string, context?: HandleChatContext) {
+    const result = await this.claudeClient.classifyIntent(message, context);
 
-    if (normalized.includes('transfer')) {
-      return {
-        reply: 'Transfer intent detected. Routed through the orchestrator boundary.',
-        intent: 'transfer',
-        confirmation: { kind: 'transfer', summary: message },
-      };
-    }
-
-    if (normalized.includes('balance')) {
-      return {
-        reply: 'Balance request received. Routed through the orchestrator boundary.',
-        intent: 'balance',
-        confirmation: null,
+    // Build the confirmation object the frontend uses to trigger an action.
+    // Only executable intents (transfer, swap) produce a confirmation; balance
+    // and general do not. Swap is classified but honestly unavailable downstream.
+    let confirmation: { kind: string; summary: string; parameters?: unknown } | null = null;
+    if (result.intent === 'transfer' || result.intent === 'swap') {
+      confirmation = {
+        kind: result.intent,
+        summary: message,
+        parameters: result.parameters,
       };
     }
 
     return {
-      reply: 'I can help with balance checks, swaps, transfers, and Arc ecosystem discovery.',
-      intent: 'general',
-      confirmation: null,
+      reply: result.reply,
+      intent: result.intent,
+      confirmation,
     };
   }
 }

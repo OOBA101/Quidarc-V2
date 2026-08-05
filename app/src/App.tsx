@@ -230,7 +230,7 @@ function App() {
       const response = await fetch(`${API_BASE}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: trimmed }),
+        body: JSON.stringify({ message: trimmed, walletAddress: wallet?.address }),
       });
       const payload = await response.json();
 
