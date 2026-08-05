@@ -21,10 +21,11 @@ const confirmTransferSchema = z.object({
 });
 
 const agentActionSchema = z.object({
-  kind: z.enum(['swap', 'bridge', 'claim']),
+  kind: z.enum(['transfer', 'swap', 'bridge', 'claim']),
   permissionCardId: z.string().uuid(),
   protocol: z.string().min(1),
   amount: z.string().min(1),
+  destinationAddress: z.string().min(1).optional(),
 });
 
 export const createPermissionRoutes: FastifyPluginAsync = async (fastify) => {

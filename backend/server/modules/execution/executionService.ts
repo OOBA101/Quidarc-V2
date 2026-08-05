@@ -2,6 +2,7 @@ import { AuditService } from '../audit/auditService.js';
 import { PermissionService } from '../permission/permissionService.js';
 import { encodeUsdcTransferData } from '../../integrations/arc/arcClient.js';
 import { CircleClient } from '../../integrations/circle/circleClient.js';
+import { AgentWalletService } from '../agent-wallet/walletService.js';
 
 export interface PrepareTransferInput {
   fromAddress: string;
@@ -20,10 +21,11 @@ export interface ConfirmTransferInput {
 }
 
 export interface AgentActionInput {
-  kind: 'swap' | 'bridge' | 'claim';
+  kind: 'transfer' | 'swap' | 'bridge' | 'claim';
   permissionCardId: string; // mandatory — agent actions only ever run under a card
   protocol: string;
   amount: string;
+  destinationAddress?: string; // required for kind='transfer'
 }
 
 /**
@@ -48,6 +50,7 @@ export class ExecutionService {
     private readonly permissionService = new PermissionService(),
     private readonly auditService = new AuditService(),
     private readonly circleClient = new CircleClient(),
+    private readonly agentWalletService = new AgentWalletService(),
   ) {}
 
   async prepareTransfer(input: PrepareTransferInput) {
@@ -113,17 +116,89 @@ export class ExecutionService {
       return {
         authorized: true as const,
         executed: false as const,
-        reason: 'CIRCLE_API_KEY is not configured — agent-wallet execution is not available yet.',
+        reason: 'Circle is not configured — agent-wallet execution is not available yet.',
       };
     }
 
-    // TODO: real Circle App Kit / DEX routing call, once CircleClient's real
-    // implementation exists. Record the audit entry and spend only after a
-    // real on-chain result comes back — never before that.
+    // Only 'transfer' is implemented for the demo. swap/bridge/claim require
+    // DEX/bridge contracts that don't exist on Arc Testnet yet — honestly report
+    // those as unavailable rather than faking them.
+    if (input.kind !== 'transfer') {
+      return {
+        authorized: true as const,
+        executed: false as const,
+        reason: `Agent action '${input.kind}' is not available yet — Arc Testnet has no DEX/bridge contracts for the demo.`,
+      };
+    }
+
+    if (!input.destinationAddress) {
+      return {
+        authorized: true as const,
+        executed: false as const,
+        reason: "A transfer requires 'destinationAddress'.",
+      };
+    }
+
+    // Resolve the Agent Wallet backing this card, and its Circle wallet ID.
+    const card = await this.permissionService.getCard(input.permissionCardId);
+    if (!card?.agentWalletAddress) {
+      return {
+        authorized: true as const,
+        executed: false as const,
+        reason: 'This card has no Agent Wallet configured — provision one first.',
+      };
+    }
+
+    const agentWallet = await this.agentWalletService.getWalletByAddress(card.agentWalletAddress);
+    if (!agentWallet?.circleWalletId) {
+      return {
+        authorized: true as const,
+        executed: false as const,
+        reason: 'The Agent Wallet is not a Circle-provisioned wallet (no circleWalletId).',
+      };
+    }
+
+    // Circle needs the tokenId of the wallet's USDC holding — resolved by listing
+    // the wallet's balances and matching the Arc USDC contract address.
+    const tokenId = await this.circleClient.getUsdcTokenId(agentWallet.circleWalletId);
+    if (!tokenId) {
+      return {
+        authorized: true as const,
+        executed: false as const,
+        reason: 'The Agent Wallet holds no USDC on Arc Testnet yet (fund it via the Circle faucet).',
+      };
+    }
+
+    // Execute, then poll until the transaction has an on-chain txHash. We record
+    // spend + audit ONLY after that real confirmation — never before.
+    const { transactionId } = await this.circleClient.createUsdcTransfer({
+      walletId: agentWallet.circleWalletId,
+      tokenId,
+      destinationAddress: input.destinationAddress,
+      amount: input.amount,
+    });
+
+    const status = await this.circleClient.getTransactionStatus(transactionId, true);
+
+    const auditEntry = await this.auditService.record({
+      permissionCardId: input.permissionCardId,
+      kind: 'transfer',
+      walletAddress: card.agentWalletAddress,
+      amount: Number(input.amount),
+      protocol: input.protocol,
+      txHash: status.txHash ?? undefined,
+      status: 'confirmed',
+    });
+
+    await this.permissionService.recordSpend(input.permissionCardId, Number(input.amount));
+
     return {
       authorized: true as const,
-      executed: false as const,
-      reason: 'Circle is configured but the real execution call is not implemented yet.',
+      executed: true as const,
+      transactionId,
+      txHash: status.txHash,
+      state: status.state,
+      auditEntry,
     };
   }
 }

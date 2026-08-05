@@ -43,6 +43,12 @@ export class PermissionService {
     return { cards: rows };
   }
 
+  /** Fetch a single card by ID — used by execution to resolve its agent wallet. */
+  async getCard(id: string) {
+    const [card] = await db.select().from(permissionCards).where(eq(permissionCards.id, id));
+    return card ?? null;
+  }
+
   async createCard(input: PermissionCardInput) {
     const [card] = await db
       .insert(permissionCards)
@@ -61,8 +67,7 @@ export class PermissionService {
     return { card };
   }
 
-  async revokeCard(id: string) {
-    const [card] = await db
+  async revokeCard(id: string) {    const [card] = await db
       .update(permissionCards)
       .set({ status: 'revoked' })
       .where(eq(permissionCards.id, id))

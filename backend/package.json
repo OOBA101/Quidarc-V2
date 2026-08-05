@@ -16,6 +16,7 @@
     "arc:verify:prod": "node dist/server/integrations/arc/verify.js"
   },
   "dependencies": {
+    "@circle-fin/developer-controlled-wallets": "^10.8.0",
     "drizzle-orm": "^0.45.2",
     "fastify": "^5.0.0",
     "pg": "^8.22.0",

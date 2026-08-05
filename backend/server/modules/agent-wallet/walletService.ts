@@ -39,6 +39,13 @@ export class AgentWalletService {
     return row ?? null;
   }
 
+  /** Look up a wallet record by its on-chain address — used to resolve an
+   * Agent Wallet's Circle wallet ID from the address stored on a permission card. */
+  async getWalletByAddress(address: string) {
+    const [row] = await db.select().from(wallets).where(eq(wallets.address, address));
+    return row ?? null;
+  }
+
   /** Real on-chain read against the Arc Testnet RPC — works for any address, agent or user. */
   async getBalance(address: string, rpcUrl?: string) {
     const balance = await getUsdcBalance(address, rpcUrl);

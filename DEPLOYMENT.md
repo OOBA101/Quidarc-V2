@@ -21,7 +21,9 @@ This repository contains a full monorepo with three workspaces:
    - `DATABASE_URL`: *(Your Railway PostgreSQL connection string — use the internal `*.railway.internal` URL when backend and DB share a project)*
    - `NODE_ENV`: `production` *(required — enables SSL, CORS lockdown, and fail-fast validation)*
    - `ARC_RPC_URL`: `https://rpc.testnet.arc.network`
-   - `CIRCLE_API_KEY`: *(Your Circle Developer-Controlled Wallets API key — optional until Phase 6)*
+   - `CIRCLE_API_KEY`: *(Your Circle Developer-Controlled Wallets API key — leave blank to run Agent Wallets in labeled-mock mode)*
+   - `CIRCLE_ENTITY_SECRET`: *(32-byte Circle entity secret — full signing authority; required whenever `CIRCLE_API_KEY` is set)*
+   - `CIRCLE_WALLET_SET_ID`: *(The Circle wallet set new Agent Wallets are created under — required whenever `CIRCLE_API_KEY` is set)*
    - `ANTHROPIC_API_KEY`: *(Your Anthropic API key — optional until Phase 7)*
    - `CORS_ORIGINS`: *(Comma-separated allowed frontend origins, e.g. `https://your-app.vercel.app,https://your-landing.vercel.app`. Required in production.)*
    - Do **not** set `PORT` — Railway injects it automatically and the server binds it.

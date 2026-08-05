@@ -18,8 +18,14 @@ const envSchema = z.object({
     .string()
     .default('0x3600000000000000000000000000000000000000'),
 
-  // Circle API
+  // Circle API — Developer-Controlled Wallets (Agent Wallet provisioning +
+  // execution). All three are empty by default so the backend runs in a
+  // labeled-mock mode with no credentials. If CIRCLE_API_KEY is set, the entity
+  // secret and wallet set ID become required (see superRefine) — there is no
+  // half-configured state that would throw at request time.
   CIRCLE_API_KEY: z.string().optional().default(''),
+  CIRCLE_ENTITY_SECRET: z.string().optional().default(''),
+  CIRCLE_WALLET_SET_ID: z.string().optional().default(''),
 
   // AI Brain
   ANTHROPIC_API_KEY: z.string().optional().default(''),
@@ -33,6 +39,26 @@ const envSchema = z.object({
   // defaults. Without this, a missing DATABASE_URL silently points the server
   // at localhost and it boots "healthy" against a database that isn't there.
   .superRefine((val, ctx) => {
+    // Circle is optional, but partial configuration is not: if the API key is
+    // present, the entity secret and wallet set ID must be too — otherwise the
+    // first agent-wallet call would throw mid-request instead of at boot.
+    if (val.CIRCLE_API_KEY.trim()) {
+      if (!val.CIRCLE_ENTITY_SECRET.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['CIRCLE_ENTITY_SECRET'],
+          message: 'CIRCLE_ENTITY_SECRET is required when CIRCLE_API_KEY is set.',
+        });
+      }
+      if (!val.CIRCLE_WALLET_SET_ID.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['CIRCLE_WALLET_SET_ID'],
+          message: 'CIRCLE_WALLET_SET_ID is required when CIRCLE_API_KEY is set.',
+        });
+      }
+    }
+
     if (val.NODE_ENV !== 'production') return;
 
     if (val.DATABASE_URL.includes('localhost') || val.DATABASE_URL.includes('quidarc_dev')) {
