@@ -12,10 +12,12 @@ export async function runSeed() {
       ON CONFLICT (email) DO NOTHING;
     `);
 
-    // Seed sample permission card for testing
+    // Seed sample permission card for testing. permission_cards.id is a random
+    // uuid, so ON CONFLICT never fires — guard on (name, owner_wallet) with
+    // WHERE NOT EXISTS to keep re-running the seed idempotent.
     await client.query(`
       INSERT INTO permission_cards (name, owner_wallet, actions, protocol_allowlist, daily_spend_limit, expires_at, status)
-      VALUES (
+      SELECT
         'Demo DEX Card',
         '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
         '["swap"]'::jsonb,
@@ -23,8 +25,11 @@ export async function runSeed() {
         50.000000,
         NOW() + INTERVAL '30 days',
         'active'
-      )
-      ON CONFLICT DO NOTHING;
+      WHERE NOT EXISTS (
+        SELECT 1 FROM permission_cards
+        WHERE name = 'Demo DEX Card'
+          AND owner_wallet = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'
+      );
     `);
 
     console.log('✅ PostgreSQL database seeded successfully!');

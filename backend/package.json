@@ -9,6 +9,8 @@
     "test": "vitest run",
     "db:migrate": "tsx server/db/migrate.ts",
     "db:migrate:prod": "node dist/server/db/migrate.js",
+    "db:verify": "tsx server/db/verify.ts",
+    "db:verify:prod": "node dist/server/db/verify.js",
     "db:seed": "tsx server/db/seed.ts"
   },
   "dependencies": {

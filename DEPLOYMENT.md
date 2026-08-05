@@ -51,13 +51,23 @@ serving traffic and aborts the boot if the database is unreachable.
    }
    ```
 
-### Step 5: Populate Demo Seed Data (Optional)
-Run the seed script manually or via Railway CLI if you want initial test cards and waitlist records:
+### Step 5: Verify the Database Schema
+After the backend has booted (migrations run automatically), confirm the live
+database is fully provisioned — every table, column, and index — and check TLS:
+```bash
+npm run db:verify:prod        # on Railway (compiled)
+# or, against a remote DB from your machine:
+DATABASE_URL="postgres://..." npm run db:verify
+```
+The command exits non-zero and lists any missing objects if the schema is incomplete.
+
+### Step 6: Populate Demo Seed Data (Optional)
+Seed initial demo cards and waitlist records (idempotent — safe to re-run):
 ```bash
 npm run db:seed
 ```
 
-### Step 6: Deploy Frontend Web App on Vercel / Cloudflare
+### Step 7: Deploy Frontend Web App on Vercel / Cloudflare
 1. Create a new project on Vercel or Cloudflare Pages targeting `app/` (or `frontend/`).
 2. Set Environment Variable on Vercel:
    - `VITE_API_BASE_URL`: `https://quidarc-backend-production.up.railway.app`
