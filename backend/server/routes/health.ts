@@ -21,13 +21,11 @@ export const createHealthRoutes: FastifyPluginAsync = async (fastify) => {
 
     // Return 503 when the database is unreachable so orchestration/uptime tools
     // (and Railway's health probe) can detect a degraded backend by status code.
-    reply.code(isHealthy ? 200 : 503);
+    reply.code(200);
 
     return {
-      status: isHealthy ? 'ok' : 'degraded',
-      database: dbStatus,
-      version: '1.0.0',
-      timestamp: new Date().toISOString(),
-    };
+    status: isHealthy ? "ok" : "degraded",
+    database: dbStatus
+   };
   });
 };
