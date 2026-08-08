@@ -53,9 +53,11 @@ async function verify(): Promise<boolean> {
 
 if (process.argv[1] && process.argv[1].includes('verify')) {
   verify()
-    .then((ok) => process.exit(ok ? 0 : 1))
+    .then((ok) => {
+      process.exitCode = ok ? 0 : 1;
+    })
     .catch((error) => {
       console.error('❌ Arc verification error:', error);
-      process.exit(1);
+      process.exitCode = 1;
     });
 }

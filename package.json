@@ -14,6 +14,7 @@
     "test": "npm --workspace backend run test"
   },
   "dependencies": {
+    "@circle-fin/developer-controlled-wallets": "^10.8.0",
     "validator": "^13.15.35"
   }
 }

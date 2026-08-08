@@ -37,3 +37,7 @@ coverage/
 # Misc
 *.local
 .turbo/
+
+# Recovery
+circle-recovery/
+*.dat
