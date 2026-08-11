@@ -1,1 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+/* Deliberate type pairing (better-typography #4):
+   - Space Grotesk: display / headlines — grotesk character for hierarchy
+   - Inter: body / UI — neutral, highly legible at reading sizes
+   - JetBrains Mono: technical eyebrows, labels, addresses — the "engineered" voice */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
