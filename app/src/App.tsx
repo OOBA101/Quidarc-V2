@@ -124,20 +124,26 @@ function App() {
   }, []);
 
   const refreshBalance = async (address: string) => {
-    try {
-      const response = await fetch(`${API_BASE}/wallet/balance`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address }),
-      });
-      const payload = await response.json();
-      if (payload.balance) {
-        setWalletBalance(payload.balance);
-      }
-    } catch {
-      setWalletBalance('0.00 USDC');
+  try {
+    const response = await fetch(`${API_BASE}/wallet/balance`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ address }),
+    });
+    if (!response.ok) {
+      console.error(`[balance] ${response.status} from ${API_BASE}/wallet/balance`, await response.text());
+      return;
     }
-  };
+    const payload = await response.json();
+    if (typeof payload.balance === 'string') {
+      setWalletBalance(payload.balance);
+    } else {
+      console.error('[balance] unexpected payload shape:', payload);
+    }
+  } catch (err) {
+    console.error(`[balance] fetch failed against ${API_BASE}/wallet/balance`, err);
+  }
+};
 
   const handleCreateWallet = async () => {
     if (walletPassword.length < 8) {
