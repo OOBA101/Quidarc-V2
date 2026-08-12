@@ -59,7 +59,7 @@ type ChatTurn = {
 const AVAILABLE_ACTIONS = ['swap', 'transfer', 'bridge', 'claim'];
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'chat' | 'permissions' | 'wallet' | 'audit' | 'explorer'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'permissions' | 'wallet' | 'audit' | 'hub'>('chat');
   const [message, setMessage] = useState('');
   const [chatHistory, setChatHistory] = useState<ChatTurn[]>([
     {
@@ -496,7 +496,7 @@ function App() {
         <button className={`tab-btn ${activeTab === 'audit' ? 'active' : ''}`} onClick={() => setActiveTab('audit')}>
           📜 Audit Log ({activities.length})
         </button>
-        <button className={`tab-btn ${activeTab === 'explorer' ? 'active' : ''}`} onClick={() => setActiveTab('explorer')}>
+        <button className={`tab-btn ${activeTab === 'hub' ? 'active' : ''}`} onClick={() => setActiveTab('hub')}>
           🌐 Arc Ecosystem Hub
         </button>
       </nav>
@@ -825,8 +825,8 @@ function App() {
         </main>
       )}
 
-      {/* TAB 5: Arc Explorer */}
-      {activeTab === 'explorer' && (
+      {/* TAB 5: Arc Ecosystem Hub */}
+      {activeTab === 'hub' && (
         <main className="main-grid">
           <section className="glass-panel">
             <h2 className="panel-title">📰 Arc Ecosystem News</h2>
