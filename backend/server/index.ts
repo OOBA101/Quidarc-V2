@@ -61,7 +61,7 @@ async function registerRoutes(server: FastifyInstance) {
 async function start() {
   // Apply the database schema before serving any traffic. Idempotent, so it is
   // safe on every boot/restart and guarantees routes never hit missing tables.
-  // await runMigrations();
+  await runMigrations();
 
   await registerHooks(app);
   await registerRoutes(app);

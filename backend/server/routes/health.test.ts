@@ -24,5 +24,5 @@ describe('health route', () => {
       expect(response.statusCode).toBe(503);
       expect(body.status).toBe('degraded');
     }
-  });
+  }, 10000);
 });

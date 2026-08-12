@@ -4,8 +4,8 @@ export class ContentService {
       items: [
         {
           id: 'news-1',
-          title: 'Arc testnet expands DeFi coverage',
-          summary: 'New lending and swap venues are live for testing on Arc Testnet.',
+          title: 'Arc Testnet Ecosystem Partner Updates',
+          summary: 'Ecosystem partners and protocol integrations preparing for upcoming Arc deployments.',
         },
       ],
     };
@@ -16,15 +16,15 @@ export class ContentService {
       items: [
         {
           id: 'dapp-1',
-          name: 'Uniswap',
+          name: 'Uniswap (Ecosystem Partner)',
           category: 'Exchange',
-          summary: 'Swap and route liquidity on Arc testnet.',
+          summary: 'Planned DEX liquidity venue integration for Arc.',
         },
         {
           id: 'dapp-2',
-          name: 'Euler',
+          name: 'Euler (Ecosystem Partner)',
           category: 'Lending',
-          summary: 'Borrow and lend assets with a simple interface.',
+          summary: 'Planned lending and borrowing protocol venue for Arc.',
         },
       ],
     };

@@ -99,28 +99,29 @@ function App() {
       refreshBalance(stored.address);
     }
 
-    fetch(`${API_BASE}/permissions`).then(async (res) => {
-      const payload = (await res.json()) as { cards: PermissionCard[] };
+    const loadJson = async <T,>(path: string, onSuccess: (data: T) => void, label: string) => {
+      try {
+        const res = await fetch(`${API_BASE}${path}`);
+        if (!res.ok) {
+          console.error(`[${label}] ${res.status} from ${API_BASE}${path}`, await res.text());
+          return;
+        }
+        onSuccess(await res.json());
+      } catch (err) {
+        console.error(`[${label}] fetch failed against ${API_BASE}${path}`, err);
+      }
+    };
+
+    loadJson<{ cards: PermissionCard[] }>('/permissions', (payload) => {
       const cardsList = payload.cards || [];
       setPermissions(cardsList);
       const active = cardsList.find((c) => c.status === 'active');
       if (active) setSelectedCardId(active.id);
-    }).catch(() => {});
+    }, 'permissions');
 
-    fetch(`${API_BASE}/news`).then(async (res) => {
-      const payload = (await res.json()) as { items: NewsItem[] };
-      setNews(payload.items || []);
-    }).catch(() => {});
-
-    fetch(`${API_BASE}/dapps`).then(async (res) => {
-      const payload = (await res.json()) as { items: DAppItem[] };
-      setDapps(payload.items || []);
-    }).catch(() => {});
-
-    fetch(`${API_BASE}/audit`).then(async (res) => {
-      const payload = (await res.json()) as { entries: ActivityItem[] };
-      setActivities(payload.entries || []);
-    }).catch(() => {});
+    loadJson<{ items: NewsItem[] }>('/news', (payload) => setNews(payload.items || []), 'news');
+    loadJson<{ items: DAppItem[] }>('/dapps', (payload) => setDapps(payload.items || []), 'dapps');
+    loadJson<{ entries: ActivityItem[] }>('/audit', (payload) => setActivities(payload.entries || []), 'audit');
   }, []);
 
   const refreshBalance = async (address: string) => {
@@ -496,7 +497,7 @@ function App() {
           📜 Audit Log ({activities.length})
         </button>
         <button className={`tab-btn ${activeTab === 'explorer' ? 'active' : ''}`} onClick={() => setActiveTab('explorer')}>
-          🌐 Arc Explorer
+          🌐 Arc Ecosystem Hub
         </button>
       </nav>
 
