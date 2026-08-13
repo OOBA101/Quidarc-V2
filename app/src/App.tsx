@@ -73,6 +73,13 @@ function App() {
   const [wallet, setWallet] = useState<WalletRecord | null>(null);
   const [walletPassword, setWalletPassword] = useState('');
   const [walletSeed, setWalletSeed] = useState('');
+  const [revealPassword, setRevealPassword] = useState('');
+  const [revealedSecret, setRevealedSecret] = useState<{ kind: 'privateKey' | 'mnemonic'; value: string } | null>(null);
+  const [revealError, setRevealError] = useState('');
+  const [changePwCurrent, setChangePwCurrent] = useState('');
+  const [changePwNew, setChangePwNew] = useState('');
+  const [changePwConfirm, setChangePwConfirm] = useState('');
+  const [changePwStatus, setChangePwStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [walletBalance, setWalletBalance] = useState('');
   const [transferRecipient, setTransferRecipient] = useState('');
   const [transferAmount, setTransferAmount] = useState('0.01');
@@ -152,8 +159,8 @@ function App() {
       return;
     }
 
-    const { account, privateKeyHex } = createNewAccount();
-    const encrypted = await encryptPrivateKey(privateKeyHex, walletPassword);
+    const { account, secretForStorage } = createNewAccount();
+    const encrypted = await encryptPrivateKey(secretForStorage, walletPassword);
     const record: WalletRecord = { ...encrypted, address: account.address, chainId: 5042002, createdAt: new Date().toISOString() };
 
     setWallet(record);
@@ -186,6 +193,55 @@ function App() {
     setWalletSeed('');
     await refreshBalance(record.address);
   };
+
+  const handleRevealSecret = async () => {
+  if (!wallet) return;
+  setRevealError('');
+  try {
+    const secret = await decryptPrivateKey(wallet, revealPassword);
+    setRevealedSecret({ kind: detectSecretKind(secret), value: secret });
+    setRevealPassword('');
+  } catch {
+    setRevealError('Incorrect password.');
+  }
+};
+
+  const handleHideSecret = () => {
+  setRevealedSecret(null);
+  setRevealError('');
+ };
+
+  const handleChangePassword = async () => {
+  if (!wallet) return;
+  setChangePwStatus(null);
+
+  if (changePwNew.length < 8) {
+    setChangePwStatus({ type: 'error', message: 'New password must be at least 8 characters.' });
+    return;
+  }
+  if (changePwNew !== changePwConfirm) {
+    setChangePwStatus({ type: 'error', message: 'New password and confirmation do not match.' });
+    return;
+  }
+
+  let secret: string;
+  try {
+    secret = await decryptPrivateKey(wallet, changePwCurrent);
+  } catch {
+    setChangePwStatus({ type: 'error', message: 'Current password is incorrect.' });
+    return;
+  }
+
+  const encrypted = await encryptPrivateKey(secret, changePwNew);
+  const updated: WalletRecord = { ...encrypted, address: wallet.address, chainId: wallet.chainId, createdAt: wallet.createdAt };
+
+  setWallet(updated);
+  saveEncryptedWallet(updated);
+  setChangePwCurrent('');
+  setChangePwNew('');
+  setChangePwConfirm('');
+  setChangePwStatus({ type: 'success', message: 'Password changed. Your address and funds are unaffected.' });
+};
 
   const applyPreset = (type: 'dex' | 'micro' | 'agent') => {
     if (type === 'dex') {
@@ -591,6 +647,84 @@ function App() {
           </aside>
         </main>
       )}
+
+      {wallet && (
+  <aside className="glass-panel">
+    <h3 className="panel-title">🔐 Wallet Security</h3>
+
+    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 0, marginBottom: '14px' }}>
+      Reveal your private key or recovery phrase, or change the password protecting them on this device. Anyone who sees your key or phrase can take everything in this wallet — only do this somewhere private.
+    </p>
+
+    {!revealedSecret ? (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+        <div className="form-group">
+          <label className="form-label">Wallet Password</label>
+          <input className="input-field" type="password" value={revealPassword} onChange={(e) => setRevealPassword(e.target.value)} placeholder="Password" />
+        </div>
+        {revealError && <p style={{ color: 'var(--danger)', fontSize: '0.85rem', margin: 0 }}>{revealError}</p>}
+        <button className="btn-secondary" onClick={handleRevealSecret} style={{ width: 'fit-content' }}>
+          Reveal Private Key / Recovery Phrase
+        </button>
+      </div>
+    ) : (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+        <p style={{ fontSize: '0.8rem', fontWeight: 600, margin: 0, color: 'var(--warning)' }}>
+          {revealedSecret.kind === 'mnemonic' ? 'Recovery Phrase — 12/24 words' : 'Private Key'}
+        </p>
+        <div style={{
+          fontFamily: 'monospace',
+          fontSize: '0.85rem',
+          wordBreak: 'break-all',
+          background: 'var(--input-bg)',
+          border: '1px solid var(--panel-border)',
+          borderRadius: 'var(--radius-sm)',
+          padding: '12px',
+          userSelect: 'text',
+        }}>
+          {revealedSecret.value}
+        </div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button className="btn-secondary" onClick={() => navigator.clipboard.writeText(revealedSecret.value)} style={{ flex: 1 }}>
+            Copy
+          </button>
+          <button className="btn-primary" onClick={handleHideSecret} style={{ flex: 1 }}>
+            Hide
+          </button>
+        </div>
+      </div>
+    )}
+
+    <hr style={{ borderColor: 'var(--panel-border)', margin: '16px 0' }} />
+
+    <h3 className="panel-title" style={{ fontSize: '0.95rem' }}>Change Password</h3>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <div className="form-group">
+        <label className="form-label">Current Password</label>
+        <input className="input-field" type="password" value={changePwCurrent} onChange={(e) => setChangePwCurrent(e.target.value)} placeholder="Current password" />
+      </div>
+      <div className="form-group">
+        <label className="form-label">New Password</label>
+        <input className="input-field" type="password" value={changePwNew} onChange={(e) => setChangePwNew(e.target.value)} placeholder="8+ characters" />
+      </div>
+      <div className="form-group">
+        <label className="form-label">Confirm New Password</label>
+        <input className="input-field" type="password" value={changePwConfirm} onChange={(e) => setChangePwConfirm(e.target.value)} placeholder="Repeat new password" />
+      </div>
+      {changePwStatus && (
+        <p style={{ color: changePwStatus.type === 'error' ? 'var(--danger)' : 'var(--success)', fontSize: '0.85rem', margin: 0 }}>
+          {changePwStatus.message}
+        </p>
+      )}
+      <button className="btn-primary" onClick={handleChangePassword} style={{ width: 'fit-content' }}>
+        Change Password
+      </button>
+      <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)', margin: 0 }}>
+        There is no password reset. If you forget this and haven't saved your recovery phrase or private key elsewhere, this wallet is permanently unrecoverable.
+      </p>
+    </div>
+  </aside>
+)}
 
       {/* TAB 2: Permission Cards */}
       {activeTab === 'permissions' && (

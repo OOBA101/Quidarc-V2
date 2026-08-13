@@ -1,5 +1,6 @@
-import { generatePrivateKey, mnemonicToAccount, privateKeyToAccount } from 'viem/accounts';
-import type { Account, PrivateKeyAccount } from 'viem';
+import { generateMnemonic, mnemonicToAccount, privateKeyToAccount } from 'viem/accounts';
+import { wordlist as english } from '@scure/bip39/wordlists/english';
+import type { Account } from 'viem';
 
 export interface EncryptedWalletRecord {
   address: string;
@@ -27,9 +28,26 @@ const WALLET_STORAGE_KEY = 'quidarc.wallet.v2';
 // rather than trying to pull a `.privateKey` off the account object (which
 // doesn't exist and would silently be `undefined`).
 
-export function createNewAccount(): { account: PrivateKeyAccount; privateKeyHex: `0x${string}` } {
-  const privateKeyHex = generatePrivateKey();
-  return { account: privateKeyToAccount(privateKeyHex), privateKeyHex };
+/**
+ * Generates a new wallet as a proper BIP-39 mnemonic (12 words) rather than a
+ * bare private key — this is what gives newly-created wallets a recovery
+ * phrase to show later, matching standard wallet UX. Wallets created before
+ * this change are unaffected and still work; they just only ever show
+ * "Private Key" when revealed, never "Recovery Phrase" — see
+ * detectSecretKind() below for how that's determined.
+ */
+export function createNewAccount(): { account: Account; secretForStorage: string } {
+  const mnemonic = generateMnemonic(english);
+  return { account: mnemonicToAccount(mnemonic), secretForStorage: mnemonic };
+}
+
+/**
+ * Determines whether a decrypted secret is a raw private key or a BIP-39
+ * phrase, purely by shape. Used both for validating import input and for
+ * labeling a revealed secret correctly in the UI.
+ */
+export function detectSecretKind(secret: string): 'privateKey' | 'mnemonic' {
+  return /^0x[0-9a-fA-F]{64}$/.test(secret.trim()) ? 'privateKey' : 'mnemonic';
 }
 
 /**
@@ -43,10 +61,11 @@ export function createNewAccount(): { account: PrivateKeyAccount; privateKeyHex:
  * way, only the encrypted form of whatever's returned here should ever touch
  * storage.
  */
+
 export function importAccount(secret: string): { account: Account; secretForStorage: string } {
   const trimmed = secret.trim();
 
-  if (/^0x[0-9a-fA-F]{64}$/.test(trimmed)) {
+  if (detectSecretKind(trimmed) === 'privateKey') {
     return { account: privateKeyToAccount(trimmed as `0x${string}`), secretForStorage: trimmed };
   }
 
