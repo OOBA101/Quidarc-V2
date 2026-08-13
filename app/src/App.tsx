@@ -6,6 +6,7 @@ import {
   decryptPrivateKey,
   saveEncryptedWallet,
   loadEncryptedWallet,
+  detectSecretKind,
   type EncryptedWalletRecord,
 } from './lib/walletCrypto';
 import { signAndSendUsdcTransfer, USDC_DECIMALS } from './lib/arcChain';
