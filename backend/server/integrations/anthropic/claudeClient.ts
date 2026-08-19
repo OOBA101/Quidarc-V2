@@ -3,6 +3,7 @@ import type { MessageParam, Tool } from '@anthropic-ai/sdk/resources/messages.mj
 import { env } from '../../config/env.js';
 import { AgentWalletService } from '../../modules/agent-wallet/walletService.js';
 import { PermissionService } from '../../modules/permission/permissionService.js';
+import { ContentService } from '../../modules/content/contentService.js';
 
 interface IntentClassificationContext {
   walletAddress?: string;
@@ -28,6 +29,7 @@ export class ClaudeClient {
   private client: Anthropic | null = null;
   private readonly walletService = new AgentWalletService();
   private readonly permissionService = new PermissionService();
+  private readonly contentService = new ContentService();
 
   constructor() {
     if (this.isConfigured()) {
@@ -94,6 +96,22 @@ export class ClaudeClient {
           required: ['ownerWallet'],
         },
       },
+      {
+        name: 'getArcEcosystemInfo',
+        description:
+          'Get real, current Arc ecosystem news and a directory of dApps/platforms (trading, lending, yield) available on Arc. Use this whenever the user asks about Arc news, what dApps exist, or where to trade, lend, or earn yield on Arc.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            topic: {
+              type: 'string',
+              enum: ['news', 'dapps', 'both'],
+              description: 'Which kind of ecosystem info to retrieve.',
+            },
+          },
+          required: ['topic'],
+        },
+      },
     ];
 
     const systemPrompt = `You are Quidarc AI Assistant, an intent classifier and parameter extractor for a non-custodial wallet on Arc Testnet (EVM-compatible, USDC-native chain).
@@ -113,7 +131,7 @@ Parameter extraction (for transfer intent):
 
 If the user's transfer request is ambiguous (no amount, or "send to Alice" without an address), ask for clarification in your reply rather than guessing.
 
-Use the read-only tools (getBalance, listPermissionCards) when the user asks about their balance or cards. You cannot execute transfers directly — you propose the structured intent, the user confirms, and the backend executes under Permission Card authorization.
+Use the read-only tools (getBalance, listPermissionCards, getArcEcosystemInfo) when the user asks about their balance, their cards, or what's happening on Arc — news, dApps, or where to trade/lend/earn yield. Never invent ecosystem news, dApp names, or links; only state what getArcEcosystemInfo actually returns, and if it doesn't cover what the user asked, say so rather than guessing. You cannot execute transfers directly — you propose the structured intent, the user confirms, and the backend executes under Permission Card authorization.
 
 Keep replies concise, friendly, and production-fintech-appropriate.`;
 
@@ -211,6 +229,14 @@ Keep replies concise, friendly, and production-fintech-appropriate.`;
         return { error: 'No wallet address provided.' };
       }
       return this.permissionService.listCards(ownerWallet);
+    }
+
+    if (name === 'getArcEcosystemInfo') {
+      const topic = (input.topic as string) || 'both';
+      const result: Record<string, unknown> = {};
+      if (topic === 'news' || topic === 'both') result.news = await this.contentService.listNews();
+      if (topic === 'dapps' || topic === 'both') result.dapps = this.contentService.listDApps();
+      return result;
     }
 
     return { error: `Unknown tool: ${name}` };

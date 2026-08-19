@@ -27,8 +27,8 @@ type PermissionCard = {
 
 type WalletRecord = EncryptedWalletRecord & { chainId: number };
 
-type NewsItem = { id: string; title: string; summary: string };
-type DAppItem = { id: string; name: string; category: string; summary: string };
+type NewsItem = { id: string; title: string; summary: string; url: string };
+type DAppItem = { id: string; name: string; category: string; summary: string; url: string };
 type ConfirmationState = {
   kind: 'swap' | 'transfer';
   summary: string;
@@ -968,11 +968,18 @@ function App() {
             <h2 className="panel-title">📰 Arc Ecosystem News</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {news.map((item) => (
-                <div key={item.id} className="perm-card">
-                  <div style={{ fontWeight: 600, color: 'var(--sky-light)' }}>{item.title}</div>
-                  <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{item.summary}</p>
-                </div>
-              ))}
+            <a
+              key={item.id}
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="perm-card"
+              style={{ display: 'block', textDecoration: 'none' }}
+             >
+              <div style={{ fontWeight: 600, color: 'var(--sky-light)' }}>{item.title}</div>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{item.summary}</p>
+            </a>
+             ))}
             </div>
           </section>
 
@@ -980,11 +987,18 @@ function App() {
             <h2 className="panel-title">📱 Curated Arc dApps</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {dapps.map((item) => (
-                <div key={item.id} className="activity-item" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
-                  <div style={{ fontWeight: 600, color: '#fff' }}>{item.name} <span style={{ fontSize: '0.75rem', color: 'var(--sky-light)' }}>({item.category})</span></div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{item.summary}</div>
-                </div>
-              ))}
+            <a
+              key={item.id}
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="activity-item"
+              style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '4px', textDecoration: 'none' }}
+             >
+            <div style={{ fontWeight: 600, color: '#fff' }}>{item.name} <span style={{ fontSize: '0.75rem', color: 'var(--sky-light)' }}>({item.category})</span></div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{item.summary}</div>
+            </a>
+           ))}
             </div>
           </aside>
         </main>
