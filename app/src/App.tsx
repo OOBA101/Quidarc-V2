@@ -125,36 +125,40 @@ function App() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    const stored = loadEncryptedWallet();
-    if (stored) {
-      setWallet({ ...stored, chainId: 5042002 });
-      refreshBalance(stored.address);
-    }
+  const stored = loadEncryptedWallet();
+  if (stored) {
+    setWallet({ ...stored, chainId: 5042002 });
+    refreshBalance(stored.address);
+    loadWalletScopedData(stored.address);
+  }
+
+  loadJson<{ items: NewsItem[] }>('/news', (payload) => setNews(payload.items || []), 'news');
+  loadJson<{ items: DAppItem[] }>('/dapps', (payload) => setDapps(payload.items || []), 'dapps');
+}, []);
 
     const loadJson = async <T,>(path: string, onSuccess: (data: T) => void, label: string) => {
-      try {
-        const res = await fetch(`${API_BASE}${path}`);
-        if (!res.ok) {
-          console.error(`[${label}] ${res.status} from ${API_BASE}${path}`, await res.text());
-          return;
-        }
-        onSuccess(await res.json());
-      } catch (err) {
-        console.error(`[${label}] fetch failed against ${API_BASE}${path}`, err);
-      }
-    };
+  try {
+    const res = await fetch(`${API_BASE}${path}`);
+    if (!res.ok) {
+      console.error(`[${label}] ${res.status} from ${API_BASE}${path}`, await res.text());
+      return;
+    }
+    onSuccess(await res.json());
+  } catch (err) {
+    console.error(`[${label}] fetch failed against ${API_BASE}${path}`, err);
+  }
+};
 
-    loadJson<{ cards: PermissionCard[] }>('/permissions', (payload) => {
-      const cardsList = payload.cards || [];
-      setPermissions(cardsList);
-      const active = cardsList.find((c) => c.status === 'active');
-      if (active) setSelectedCardId(active.id);
-    }, 'permissions');
+const loadWalletScopedData = (address: string) => {
+  loadJson<{ cards: PermissionCard[] }>(`/permissions?ownerWallet=${encodeURIComponent(address)}`, (payload) => {
+    const cardsList = payload.cards || [];
+    setPermissions(cardsList);
+    const active = cardsList.find((c) => c.status === 'active');
+    if (active) setSelectedCardId(active.id);
+  }, 'permissions');
 
-    loadJson<{ items: NewsItem[] }>('/news', (payload) => setNews(payload.items || []), 'news');
-    loadJson<{ items: DAppItem[] }>('/dapps', (payload) => setDapps(payload.items || []), 'dapps');
-    loadJson<{ entries: ActivityItem[] }>('/audit', (payload) => setActivities(payload.entries || []), 'audit');
-  }, []);
+  loadJson<{ entries: ActivityItem[] }>(`/audit?walletAddress=${encodeURIComponent(address)}`, (payload) => setActivities(payload.entries || []), 'audit');
+};
 
   const refreshBalance = async (address: string) => {
     try {
@@ -179,45 +183,47 @@ function App() {
   };
 
   const handleCreateWallet = async () => {
-    if (walletPassword.length < 8) {
-      alert('Use a password with at least 8 characters.');
-      return;
-    }
+  if (walletPassword.length < 8) {
+    alert('Use a password with at least 8 characters.');
+    return;
+  }
 
-    const { account, secretForStorage } = createNewAccount();
-    const encrypted = await encryptPrivateKey(secretForStorage, walletPassword);
-    const record: WalletRecord = { ...encrypted, address: account.address, chainId: 5042002, createdAt: new Date().toISOString() };
+  const { account, secretForStorage } = createNewAccount();
+  const encrypted = await encryptPrivateKey(secretForStorage, walletPassword);
+  const record: WalletRecord = { ...encrypted, address: account.address, chainId: 5042002, createdAt: new Date().toISOString() };
 
-    setWallet(record);
-    saveEncryptedWallet(record);
-    setWalletPassword('');
-    setWalletSeed('');
-    await refreshBalance(record.address);
-  };
+  setWallet(record);
+  saveEncryptedWallet(record);
+  setWalletPassword('');
+  setWalletSeed('');
+  await refreshBalance(record.address);
+  loadWalletScopedData(record.address);
+};
 
   const handleImportWallet = async () => {
-    if (walletPassword.length < 8 || !walletSeed.trim()) {
-      alert('Enter a seed phrase or private key and a password of at least 8 characters.');
-      return;
-    }
+  if (walletPassword.length < 8 || !walletSeed.trim()) {
+    alert('Enter a seed phrase or private key and a password of at least 8 characters.');
+    return;
+  }
 
-    let imported;
-    try {
-      imported = importAccount(walletSeed);
-    } catch (error) {
-      alert((error as Error).message);
-      return;
-    }
+  let imported;
+  try {
+    imported = importAccount(walletSeed);
+  } catch (error) {
+    alert((error as Error).message);
+    return;
+  }
 
-    const encrypted = await encryptPrivateKey(imported.secretForStorage, walletPassword);
-    const record: WalletRecord = { ...encrypted, address: imported.account.address, chainId: 5042002, createdAt: new Date().toISOString() };
+  const encrypted = await encryptPrivateKey(imported.secretForStorage, walletPassword);
+  const record: WalletRecord = { ...encrypted, address: imported.account.address, chainId: 5042002, createdAt: new Date().toISOString() };
 
-    setWallet(record);
-    saveEncryptedWallet(record);
-    setWalletPassword('');
-    setWalletSeed('');
-    await refreshBalance(record.address);
-  };
+  setWallet(record);
+  saveEncryptedWallet(record);
+  setWalletPassword('');
+  setWalletSeed('');
+  await refreshBalance(record.address);
+  loadWalletScopedData(record.address);
+};
 
   const handleRevealSecret = async () => {
     if (!wallet) return;
