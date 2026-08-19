@@ -13,6 +13,23 @@ import { signAndSendUsdcTransfer, USDC_DECIMALS } from './lib/arcChain';
 import { parseUnits } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { API_BASE } from './lib/config';
+import {
+  Bot,
+  ShieldCheck,
+  History,
+  Globe,
+  Wallet,
+  Send,
+  QrCode,
+  RefreshCw,
+  Key,
+  Lock,
+  ChevronDown,
+  ArrowLeft,
+  Copy,
+  ExternalLink,
+  Zap,
+} from 'lucide-react';
 
 type PermissionCard = {
   id: string;
@@ -65,7 +82,9 @@ type ChatTurn = {
 const AVAILABLE_ACTIONS = ['swap', 'transfer', 'bridge', 'claim'];
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'chat' | 'permissions' | 'wallet' | 'audit' | 'explorer'>('chat');
+  const [activeTab, setActiveTab] = useState<'home' | 'chat' | 'permissions' | 'audit' | 'ecosystem'>('home');
+  const [activeAction, setActiveAction] = useState<'none' | 'send' | 'receive' | 'security' | 'password'>('none');
+  const [isActionsOpen, setIsActionsOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [chatHistory, setChatHistory] = useState<ChatTurn[]>([
     {
@@ -138,26 +157,26 @@ function App() {
   }, []);
 
   const refreshBalance = async (address: string) => {
-  try {
-    const response = await fetch(`${API_BASE}/wallet/balance`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ address }),
-    });
-    if (!response.ok) {
-      console.error(`[balance] ${response.status} from ${API_BASE}/wallet/balance`, await response.text());
-      return;
+    try {
+      const response = await fetch(`${API_BASE}/wallet/balance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address }),
+      });
+      if (!response.ok) {
+        console.error(`[balance] ${response.status} from ${API_BASE}/wallet/balance`, await response.text());
+        return;
+      }
+      const payload = await response.json();
+      if (typeof payload.balance === 'string') {
+        setWalletBalance(payload.balance);
+      } else {
+        console.error('[balance] unexpected payload shape:', payload);
+      }
+    } catch (err) {
+      console.error(`[balance] fetch failed against ${API_BASE}/wallet/balance`, err);
     }
-    const payload = await response.json();
-    if (typeof payload.balance === 'string') {
-      setWalletBalance(payload.balance);
-    } else {
-      console.error('[balance] unexpected payload shape:', payload);
-    }
-  } catch (err) {
-    console.error(`[balance] fetch failed against ${API_BASE}/wallet/balance`, err);
-  }
-};
+  };
 
   const handleCreateWallet = async () => {
     if (walletPassword.length < 8) {
@@ -201,53 +220,53 @@ function App() {
   };
 
   const handleRevealSecret = async () => {
-  if (!wallet) return;
-  setRevealError('');
-  try {
-    const secret = await decryptPrivateKey(wallet, revealPassword);
-    setRevealedSecret({ kind: detectSecretKind(secret), value: secret });
-    setRevealPassword('');
-  } catch {
-    setRevealError('Incorrect password.');
-  }
-};
+    if (!wallet) return;
+    setRevealError('');
+    try {
+      const secret = await decryptPrivateKey(wallet, revealPassword);
+      setRevealedSecret({ kind: detectSecretKind(secret), value: secret });
+      setRevealPassword('');
+    } catch {
+      setRevealError('Incorrect password.');
+    }
+  };
 
   const handleHideSecret = () => {
-  setRevealedSecret(null);
-  setRevealError('');
- };
+    setRevealedSecret(null);
+    setRevealError('');
+  };
 
   const handleChangePassword = async () => {
-  if (!wallet) return;
-  setChangePwStatus(null);
+    if (!wallet) return;
+    setChangePwStatus(null);
 
-  if (changePwNew.length < 8) {
-    setChangePwStatus({ type: 'error', message: 'New password must be at least 8 characters.' });
-    return;
-  }
-  if (changePwNew !== changePwConfirm) {
-    setChangePwStatus({ type: 'error', message: 'New password and confirmation do not match.' });
-    return;
-  }
+    if (changePwNew.length < 8) {
+      setChangePwStatus({ type: 'error', message: 'New password must be at least 8 characters.' });
+      return;
+    }
+    if (changePwNew !== changePwConfirm) {
+      setChangePwStatus({ type: 'error', message: 'New password and confirmation do not match.' });
+      return;
+    }
 
-  let secret: string;
-  try {
-    secret = await decryptPrivateKey(wallet, changePwCurrent);
-  } catch {
-    setChangePwStatus({ type: 'error', message: 'Current password is incorrect.' });
-    return;
-  }
+    let secret: string;
+    try {
+      secret = await decryptPrivateKey(wallet, changePwCurrent);
+    } catch {
+      setChangePwStatus({ type: 'error', message: 'Current password is incorrect.' });
+      return;
+    }
 
-  const encrypted = await encryptPrivateKey(secret, changePwNew);
-  const updated: WalletRecord = { ...encrypted, address: wallet.address, chainId: wallet.chainId, createdAt: wallet.createdAt };
+    const encrypted = await encryptPrivateKey(secret, changePwNew);
+    const updated: WalletRecord = { ...encrypted, address: wallet.address, chainId: wallet.chainId, createdAt: wallet.createdAt };
 
-  setWallet(updated);
-  saveEncryptedWallet(updated);
-  setChangePwCurrent('');
-  setChangePwNew('');
-  setChangePwConfirm('');
-  setChangePwStatus({ type: 'success', message: 'Password changed. Your address and funds are unaffected.' });
-};
+    setWallet(updated);
+    saveEncryptedWallet(updated);
+    setChangePwCurrent('');
+    setChangePwNew('');
+    setChangePwConfirm('');
+    setChangePwStatus({ type: 'success', message: 'Password changed. Your address and funds are unaffected.' });
+  };
 
   const applyPreset = (type: 'dex' | 'micro' | 'agent') => {
     if (type === 'dex') {
@@ -322,7 +341,7 @@ function App() {
         {
           id: `agent-err-${Date.now()}`,
           sender: 'agent',
-          text: '',
+          text: 'Request execution error.',
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
@@ -384,8 +403,6 @@ function App() {
           fromAddress: wallet.address,
           toAddress,
           amount: transferAmount,
-          // User Wallet transfers are self-signed by the user — never permission-card-scoped.
-         // Only Agent Wallet actions (the swap branch above) attach a card.
           protocol: 'direct-transfer',
         }),
       }).then((res) => res.json());
@@ -515,11 +532,13 @@ function App() {
     }
   };
 
+  const activePermissionCount = permissions.filter((c) => c.status === 'active').length;
+
   return (
     <div className="app-shell">
-      {/* Top Navigation Header */}
+      {/* Top Header */}
       <header className="top-header">
-        <div className="brand-row">
+        <div className="brand-row" onClick={() => setActiveTab('home')} style={{ cursor: 'pointer' }}>
           <div className="logo-icon">Q</div>
           <div>
             <div className="brand-name">Quidarc</div>
@@ -538,39 +557,354 @@ function App() {
               <span className="wallet-balance-chip">{walletBalance || '0 USDC'}</span>
             </div>
           ) : (
-            <button className="btn-primary" onClick={() => setActiveTab('wallet')}>
-              Connect / Create Wallet
+            <button className="btn-primary" onClick={() => setActiveTab('home')}>
+              <Wallet size={16} /> Wallet Home
             </button>
           )}
         </div>
       </header>
 
-      {/* Navigation Tabs */}
-      <nav className="nav-tabs">
-        <button className={`tab-btn ${activeTab === 'chat' ? 'active' : ''}`} onClick={() => setActiveTab('chat')}>
-          💬 AI Assistant
-        </button>
-        <button className={`tab-btn ${activeTab === 'permissions' ? 'active' : ''}`} onClick={() => setActiveTab('permissions')}>
-          🛡️ Permission Cards ({permissions.length})
-        </button>
-        <button className={`tab-btn ${activeTab === 'wallet' ? 'active' : ''}`} onClick={() => setActiveTab('wallet')}>
-          💳 Wallet & Transfers
-        </button>
-        <button className={`tab-btn ${activeTab === 'audit' ? 'active' : ''}`} onClick={() => setActiveTab('audit')}>
-          📜 Audit Log ({activities.length})
-        </button>
-        <button className={`tab-btn ${activeTab === 'explorer' ? 'active' : ''}`} onClick={() => setActiveTab('explorer')}>
-          🌐 Arc Ecosystem Hub
-        </button>
-      </nav>
+      {/* Back Navigation Bar (shown when on feature subpages) */}
+      {activeTab !== 'home' && (
+        <div className="back-nav-bar">
+          <button className="back-nav-btn" onClick={() => setActiveTab('home')}>
+            <ArrowLeft size={16} /> Wallet Home
+          </button>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            {activeTab === 'chat' && 'AI Agent Execution'}
+            {activeTab === 'permissions' && 'Permission Cards'}
+            {activeTab === 'audit' && 'Audit Trail'}
+            {activeTab === 'ecosystem' && 'Arc Ecosystem Hub'}
+          </span>
+        </div>
+      )}
 
-      {/* TAB 1: AI Chat */}
+      {/* HOME PAGE: Feature Tiles + Hero Wallet */}
+      {activeTab === 'home' && (
+        <>
+          {/* Feature Tiles Row */}
+          <div className="feature-tiles-grid">
+            <div className="feature-tile" onClick={() => setActiveTab('chat')}>
+              <div className="feature-tile-header">
+                <div className="feature-tile-icon">
+                  <Bot size={22} />
+                </div>
+                <span className="feature-tile-badge">Claude AI</span>
+              </div>
+              <div>
+                <h3 className="feature-tile-title">AI Assistant</h3>
+                <p className="feature-tile-desc">Conversational Agent & Tool Classifier</p>
+              </div>
+            </div>
+
+            <div className="feature-tile" onClick={() => setActiveTab('permissions')}>
+              <div className="feature-tile-header">
+                <div className="feature-tile-icon">
+                  <ShieldCheck size={22} />
+                </div>
+                <span className="feature-tile-badge">{activePermissionCount} Active</span>
+              </div>
+              <div>
+                <h3 className="feature-tile-title">Permission Cards</h3>
+                <p className="feature-tile-desc">Scoped Delegation & Revocation</p>
+              </div>
+            </div>
+
+            <div className="feature-tile" onClick={() => setActiveTab('audit')}>
+              <div className="feature-tile-header">
+                <div className="feature-tile-icon">
+                  <History size={22} />
+                </div>
+                <span className="feature-tile-badge">{activities.length} Entries</span>
+              </div>
+              <div>
+                <h3 className="feature-tile-title">Audit Log</h3>
+                <p className="feature-tile-desc">On-Chain Audit & Activity History</p>
+              </div>
+            </div>
+
+            <div className="feature-tile" onClick={() => setActiveTab('ecosystem')}>
+              <div className="feature-tile-header">
+                <div className="feature-tile-icon">
+                  <Globe size={22} />
+                </div>
+                <span className="feature-tile-badge">{news.length + dapps.length} Directory</span>
+              </div>
+              <div>
+                <h3 className="feature-tile-title">Ecosystem Hub</h3>
+                <p className="feature-tile-desc">Arc News & Verified dApps</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Main Wallet Area */}
+          <main className="main-grid">
+            {wallet ? (
+              /* Loaded Wallet Hero Card */
+              <section className="hero-balance-card">
+                <div className="hero-balance-header">
+                  <div>
+                    <div className="hero-balance-label">Total Wallet Balance</div>
+                    <div className="hero-balance-amount">{walletBalance || '0.00 USDC'}</div>
+                  </div>
+                  <button className="btn-secondary" onClick={() => refreshBalance(wallet.address)} title="Refresh Balance" style={{ padding: '8px 12px' }}>
+                    <RefreshCw size={16} /> Refresh
+                  </button>
+                </div>
+
+                <div className="hero-balance-meta">
+                  <div className="hero-meta-chip" onClick={copyAddress} style={{ cursor: 'pointer' }}>
+                    <Wallet size={14} />
+                    <span style={{ fontFamily: 'monospace' }}>{wallet.address.slice(0, 8)}...{wallet.address.slice(-6)}</span>
+                    <Copy size={12} />
+                    {copied && <span style={{ color: 'var(--success)' }}>Copied!</span>}
+                  </div>
+                  <div className="hero-meta-chip">
+                    <Zap size={14} color="var(--success)" />
+                    <span>Arc Testnet L1 (Chain 5042002)</span>
+                  </div>
+                  <a
+                    href={`https://testnet.arcscan.app/address/${wallet.address}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hero-meta-chip"
+                    style={{ textDecoration: 'none', color: 'var(--sky-light)' }}
+                  >
+                    <span>View on Arc Explorer</span>
+                    <ExternalLink size={12} />
+                  </a>
+                </div>
+
+                <hr style={{ borderColor: 'var(--panel-border)', margin: '4px 0' }} />
+
+                {/* Wallet Actions Consolidated Trigger */}
+                <div className="wallet-actions-container">
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <button className="wallet-actions-trigger" onClick={() => setIsActionsOpen(!isActionsOpen)}>
+                      <Zap size={18} />
+                      <span>Wallet Actions</span>
+                      <ChevronDown size={18} style={{ transform: isActionsOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                    </button>
+
+                    {activeAction !== 'none' && (
+                      <button className="btn-secondary" onClick={() => setActiveAction('none')} style={{ fontSize: '0.85rem' }}>
+                        Close Action Panel
+                      </button>
+                    )}
+                  </div>
+
+                  {isActionsOpen && (
+                    <div className="wallet-actions-menu">
+                      <button className="action-menu-item" onClick={() => { setActiveAction('send'); setIsActionsOpen(false); }}>
+                        <div className="action-menu-icon"><Send size={16} /></div>
+                        <div>
+                          <div style={{ fontWeight: 600 }}>Send (Direct USDC Transfer)</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Self-signed non-custodial user transfer</div>
+                        </div>
+                      </button>
+
+                      <button className="action-menu-item" onClick={() => { setActiveAction('receive'); setIsActionsOpen(false); }}>
+                        <div className="action-menu-icon"><QrCode size={16} /></div>
+                        <div>
+                          <div style={{ fontWeight: 600 }}>Receive USDC</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Display wallet address & network details</div>
+                        </div>
+                      </button>
+
+                      <button className="action-menu-item" onClick={() => { refreshBalance(wallet.address); setIsActionsOpen(false); }}>
+                        <div className="action-menu-icon"><RefreshCw size={16} /></div>
+                        <div>
+                          <div style={{ fontWeight: 600 }}>Refresh Balance</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Fetch live on-chain USDC balance</div>
+                        </div>
+                      </button>
+
+                      <button className="action-menu-item" onClick={() => { setActiveAction('security'); setIsActionsOpen(false); }}>
+                        <div className="action-menu-icon"><Key size={16} /></div>
+                        <div>
+                          <div style={{ fontWeight: 600 }}>Backup & Security (Reveal Key / Seed)</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Password-protected client-side secret view</div>
+                        </div>
+                      </button>
+
+                      <button className="action-menu-item" onClick={() => { setActiveAction('password'); setIsActionsOpen(false); }}>
+                        <div className="action-menu-icon"><Lock size={16} /></div>
+                        <div>
+                          <div style={{ fontWeight: 600 }}>Change Password</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Update local encryption password</div>
+                        </div>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Active Action Panel Display */}
+                  {activeAction === 'send' && (
+                    <div className="action-panel-box">
+                      <h3 className="panel-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Send size={18} color="var(--sky-light)" /> Direct USDC Transfer
+                      </h3>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '500px', marginTop: '12px' }}>
+                        <div className="form-group">
+                          <label className="form-label">Recipient Address</label>
+                          <input className="input-field" value={transferRecipient} onChange={(e) => setTransferRecipient(e.target.value)} placeholder="0x..." />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Amount (USDC)</label>
+                          <input className="input-field" value={transferAmount} onChange={(e) => setTransferAmount(e.target.value)} placeholder="0.01" />
+                        </div>
+                        <button className="btn-primary" onClick={handleConfirmExecution} style={{ width: 'fit-content' }}>
+                          Sign & Send Transfer
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeAction === 'receive' && (
+                    <div className="action-panel-box">
+                      <h3 className="panel-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <QrCode size={18} color="var(--sky-light)" /> Receive USDC Assets
+                      </h3>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Your Arc Testnet Wallet Address:</div>
+                        <div style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--sky-light)', wordBreak: 'break-all', background: 'var(--input-bg)', padding: '12px', borderRadius: 'var(--radius-sm)' }}>
+                          {wallet.address}
+                        </div>
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                          <button className="btn-primary" onClick={copyAddress} style={{ width: 'fit-content' }}>
+                            {copied ? '✓ Address Copied' : 'Copy Address'}
+                          </button>
+                        </div>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)', margin: 0 }}>
+                          Send USDC (ERC-20 interface or native gas) on Arc Testnet (Chain ID 5042002) to this address.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeAction === 'security' && (
+                    <div className="action-panel-box">
+                      <h3 className="panel-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Key size={18} color="var(--warning)" /> Backup & Security
+                      </h3>
+                      <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '8px', marginBottom: '14px' }}>
+                        Reveal your private key or recovery phrase. Anyone with access to this secret can control your wallet. Keep it private.
+                      </p>
+
+                      {!revealedSecret ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          <div className="form-group">
+                            <label className="form-label">Wallet Password</label>
+                            <input className="input-field" type="password" value={revealPassword} onChange={(e) => setRevealPassword(e.target.value)} placeholder="Password" />
+                          </div>
+                          {revealError && <p style={{ color: 'var(--danger)', fontSize: '0.85rem', margin: 0 }}>{revealError}</p>}
+                          <button className="btn-secondary" onClick={handleRevealSecret} style={{ width: 'fit-content' }}>
+                            Reveal Secret
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          <p style={{ fontSize: '0.8rem', fontWeight: 600, margin: 0, color: 'var(--warning)' }}>
+                            {revealedSecret.kind === 'mnemonic' ? 'Recovery Phrase' : 'Private Key'}
+                          </p>
+                          <div style={{ fontFamily: 'monospace', fontSize: '0.85rem', wordBreak: 'break-all', background: 'var(--input-bg)', border: '1px solid var(--panel-border)', borderRadius: 'var(--radius-sm)', padding: '12px', userSelect: 'text' }}>
+                            {revealedSecret.value}
+                          </div>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button className="btn-secondary" onClick={() => navigator.clipboard.writeText(revealedSecret.value)} style={{ flex: 1 }}>
+                              Copy
+                            </button>
+                            <button className="btn-primary" onClick={handleHideSecret} style={{ flex: 1 }}>
+                              Hide
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {activeAction === 'password' && (
+                    <div className="action-panel-box">
+                      <h3 className="panel-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Lock size={18} color="var(--sky-light)" /> Change Password
+                      </h3>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>
+                        <div className="form-group">
+                          <label className="form-label">Current Password</label>
+                          <input className="input-field" type="password" value={changePwCurrent} onChange={(e) => setChangePwCurrent(e.target.value)} placeholder="Current password" />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">New Password</label>
+                          <input className="input-field" type="password" value={changePwNew} onChange={(e) => setChangePwNew(e.target.value)} placeholder="8+ characters" />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Confirm New Password</label>
+                          <input className="input-field" type="password" value={changePwConfirm} onChange={(e) => setChangePwConfirm(e.target.value)} placeholder="Repeat new password" />
+                        </div>
+                        {changePwStatus && (
+                          <p style={{ color: changePwStatus.type === 'error' ? 'var(--danger)' : 'var(--success)', fontSize: '0.85rem', margin: 0 }}>
+                            {changePwStatus.message}
+                          </p>
+                        )}
+                        <button className="btn-primary" onClick={handleChangePassword} style={{ width: 'fit-content' }}>
+                          Change Password
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </section>
+            ) : (
+              /* No Wallet Yet: Key Storage Setup Panel */
+              <section className="glass-panel">
+                <h3 className="panel-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Key size={20} color="var(--sky-light)" /> Setup Non-Custodial Wallet
+                </h3>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                  Create a new wallet or import an existing key/seed phrase. Key material is encrypted locally in your browser and never sent to the server.
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '500px' }}>
+                  <div className="form-group">
+                    <label className="form-label">Encryption Password (8+ chars)</label>
+                    <input className="input-field" type="password" value={walletPassword} onChange={(e) => setWalletPassword(e.target.value)} placeholder="Password" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Seed Phrase / Key (for Import)</label>
+                    <input className="input-field" value={walletSeed} onChange={(e) => setWalletSeed(e.target.value)} placeholder="Optional seed phrase or 0x private key" />
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+                    <button className="btn-primary" onClick={handleCreateWallet} style={{ flex: 1 }}>
+                      Create New Wallet
+                    </button>
+                    <button className="btn-secondary" onClick={handleImportWallet} style={{ flex: 1 }}>
+                      Import Key
+                    </button>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {/* Quick Wallet Overview / Security Rules Side Panel */}
+            <aside className="glass-panel">
+              <h3 className="panel-title">🛡️ Security & Agent Bounds</h3>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.6', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <p style={{ margin: 0 }}>🔒 <strong>Non-Custodial:</strong> Private keys are encrypted locally with AES-GCM and never leave your browser.</p>
+                <p style={{ margin: 0 }}>⚡ <strong>Independent Transfers:</strong> Direct transfers are self-signed by you without requiring Permission Cards.</p>
+                <p style={{ margin: 0 }}>🤖 <strong>Permissioned AI Agent:</strong> Autonomous agent actions are governed by strict fail-closed Permission Cards.</p>
+              </div>
+            </aside>
+          </main>
+        </>
+      )}
+
+      {/* FEATURE SUBPAGE 1: AI Assistant */}
       {activeTab === 'chat' && (
         <main className="main-grid">
           <section className="glass-panel chat-container">
             <div className="panel-header">
-              <h2 className="panel-title">💬 Conversational AI Execution</h2>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>Powered by Arc & Circle</span>
+              <h2 className="panel-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Bot size={20} color="var(--sky-light)" /> Conversational AI Execution
+              </h2>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>Powered by Claude & Arc</span>
             </div>
 
             <div className="chat-history">
@@ -597,7 +931,7 @@ function App() {
               )}
             </div>
 
-            {/* Quick Suggestion Chips */}
+            {/* Suggestion Pills */}
             <div className="suggestion-pills">
               <button className="chip-btn" onClick={() => sendChatMessageText('Check my Arc wallet balance')}>
                 💰 Check Balance
@@ -618,7 +952,7 @@ function App() {
                 className="input-field"
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
-                placeholder="Ask about swaps, transfers, or balance..."
+                placeholder="Ask about swaps, transfers, or ecosystem news..."
               />
               <button className="btn-primary" type="submit">
                 Send
@@ -628,7 +962,9 @@ function App() {
 
           {/* Side Info Panel */}
           <aside className="glass-panel">
-            <h3 className="panel-title">🛡️ Active Authorizing Card</h3>
+            <h3 className="panel-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <ShieldCheck size={18} color="var(--sky-light)" /> Active Authorizing Card
+            </h3>
             <div className="form-group" style={{ marginBottom: '14px' }}>
               <label className="form-label">Selected Card for Chat Execution:</label>
               <select
@@ -654,90 +990,14 @@ function App() {
         </main>
       )}
 
-      {wallet && (
-  <aside className="glass-panel">
-    <h3 className="panel-title">🔐 Wallet Security</h3>
-
-    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 0, marginBottom: '14px' }}>
-      Reveal your private key or recovery phrase, or change the password protecting them on this device. Anyone who sees your key or phrase can take everything in this wallet — only do this somewhere private.
-    </p>
-
-    {!revealedSecret ? (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-        <div className="form-group">
-          <label className="form-label">Wallet Password</label>
-          <input className="input-field" type="password" value={revealPassword} onChange={(e) => setRevealPassword(e.target.value)} placeholder="Password" />
-        </div>
-        {revealError && <p style={{ color: 'var(--danger)', fontSize: '0.85rem', margin: 0 }}>{revealError}</p>}
-        <button className="btn-secondary" onClick={handleRevealSecret} style={{ width: 'fit-content' }}>
-          Reveal Private Key / Recovery Phrase
-        </button>
-      </div>
-    ) : (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-        <p style={{ fontSize: '0.8rem', fontWeight: 600, margin: 0, color: 'var(--warning)' }}>
-          {revealedSecret.kind === 'mnemonic' ? 'Recovery Phrase — 12/24 words' : 'Private Key'}
-        </p>
-        <div style={{
-          fontFamily: 'monospace',
-          fontSize: '0.85rem',
-          wordBreak: 'break-all',
-          background: 'var(--input-bg)',
-          border: '1px solid var(--panel-border)',
-          borderRadius: 'var(--radius-sm)',
-          padding: '12px',
-          userSelect: 'text',
-        }}>
-          {revealedSecret.value}
-        </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button className="btn-secondary" onClick={() => navigator.clipboard.writeText(revealedSecret.value)} style={{ flex: 1 }}>
-            Copy
-          </button>
-          <button className="btn-primary" onClick={handleHideSecret} style={{ flex: 1 }}>
-            Hide
-          </button>
-        </div>
-      </div>
-    )}
-
-    <hr style={{ borderColor: 'var(--panel-border)', margin: '16px 0' }} />
-
-    <h3 className="panel-title" style={{ fontSize: '0.95rem' }}>Change Password</h3>
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      <div className="form-group">
-        <label className="form-label">Current Password</label>
-        <input className="input-field" type="password" value={changePwCurrent} onChange={(e) => setChangePwCurrent(e.target.value)} placeholder="Current password" />
-      </div>
-      <div className="form-group">
-        <label className="form-label">New Password</label>
-        <input className="input-field" type="password" value={changePwNew} onChange={(e) => setChangePwNew(e.target.value)} placeholder="8+ characters" />
-      </div>
-      <div className="form-group">
-        <label className="form-label">Confirm New Password</label>
-        <input className="input-field" type="password" value={changePwConfirm} onChange={(e) => setChangePwConfirm(e.target.value)} placeholder="Repeat new password" />
-      </div>
-      {changePwStatus && (
-        <p style={{ color: changePwStatus.type === 'error' ? 'var(--danger)' : 'var(--success)', fontSize: '0.85rem', margin: 0 }}>
-          {changePwStatus.message}
-        </p>
-      )}
-      <button className="btn-primary" onClick={handleChangePassword} style={{ width: 'fit-content' }}>
-        Change Password
-      </button>
-      <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)', margin: 0 }}>
-        There is no password reset. If you forget this and haven't saved your recovery phrase or private key elsewhere, this wallet is permanently unrecoverable.
-      </p>
-    </div>
-  </aside>
-)}
-
-      {/* TAB 2: Permission Cards */}
+      {/* FEATURE SUBPAGE 2: Permission Cards */}
       {activeTab === 'permissions' && (
         <main className="main-grid">
           <section className="glass-panel">
             <div className="panel-header">
-              <h2 className="panel-title">🛡️ Interactive Permission Cards</h2>
+              <h2 className="panel-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <ShieldCheck size={20} color="var(--sky-light)" /> Interactive Permission Cards
+              </h2>
               <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Scoped Delegation & Instant Revocation</span>
             </div>
 
@@ -863,89 +1123,13 @@ function App() {
         </main>
       )}
 
-      {/* TAB 3: Wallet */}
-      {activeTab === 'wallet' && (
-        <main className="main-grid">
-          <section className="glass-panel">
-            <div className="panel-header">
-              <h2 className="panel-title">💳 Wallet & Direct Transfers</h2>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Non-Custodial Account Controls</span>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
-              <div className="perm-card">
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Arc Testnet Address</div>
-                <div style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--sky-light)', wordBreak: 'break-all', margin: '6px 0' }}>
-                  {wallet?.address || 'No wallet loaded.'}
-                </div>
-                {wallet && (
-                  <button className="btn-secondary" onClick={copyAddress} style={{ fontSize: '0.8rem', padding: '6px 12px' }}>
-                    {copied ? '✓ Address Copied' : '📋 Copy Address'}
-                  </button>
-                )}
-              </div>
-
-              <div className="perm-card">
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>USDC Gas & Token Balance</div>
-                <div style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--success)', margin: '4px 0' }}>
-                  {walletBalance || '0.00 USDC'}
-                </div>
-                {wallet && (
-                  <button className="btn-secondary" onClick={() => refreshBalance(wallet.address)} style={{ fontSize: '0.8rem', padding: '6px 12px' }}>
-                    🔄 Refresh Balance
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <hr style={{ borderColor: 'var(--panel-border)', margin: '16px 0' }} />
-
-            <h3 className="panel-title">💸 Direct USDC Transfer</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '500px' }}>
-              <div className="form-group">
-                <label className="form-label">Recipient Address</label>
-                <input className="input-field" value={transferRecipient} onChange={(e) => setTransferRecipient(e.target.value)} placeholder="0x..." />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Amount (USDC)</label>
-                <input className="input-field" value={transferAmount} onChange={(e) => setTransferAmount(e.target.value)} placeholder="0.01" />
-              </div>
-              <button className="btn-primary" onClick={handleConfirmExecution} style={{ width: 'fit-content' }}>
-                Sign & Send Transfer
-              </button>
-            </div>
-          </section>
-
-          {/* Create/Import Wallet Box */}
-          <aside className="glass-panel">
-            <h3 className="panel-title">🔑 Manage Key Storage</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div className="form-group">
-                <label className="form-label">Encryption Password (8+ chars)</label>
-                <input className="input-field" type="password" value={walletPassword} onChange={(e) => setWalletPassword(e.target.value)} placeholder="Password" />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Seed Phrase / Key (for Import)</label>
-                <input className="input-field" value={walletSeed} onChange={(e) => setWalletSeed(e.target.value)} placeholder="Optional seed phrase or 0x private key" />
-              </div>
-              <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
-                <button className="btn-primary" onClick={handleCreateWallet} style={{ flex: 1 }}>
-                  Create New
-                </button>
-                <button className="btn-secondary" onClick={handleImportWallet} style={{ flex: 1 }}>
-                  Import Key
-                </button>
-              </div>
-            </div>
-          </aside>
-        </main>
-      )}
-
-      {/* TAB 4: Audit Log */}
+      {/* FEATURE SUBPAGE 3: Audit Log */}
       {activeTab === 'audit' && (
         <main className="glass-panel">
           <div className="panel-header">
-            <h2 className="panel-title">📜 On-Chain & Permission Audit Trail</h2>
+            <h2 className="panel-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <History size={20} color="var(--sky-light)" /> On-Chain & Permission Audit Trail
+            </h2>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Persistent History Log</span>
           </div>
 
@@ -954,75 +1138,86 @@ function App() {
               <p style={{ color: 'var(--text-dim)' }}>No audit events logged yet.</p>
             ) : (
               activities.map((item) => (
-         <div key={item.id} className="activity-item" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '6px' }}>
-         <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-         <div>
-         <span className="activity-kind">{item.kind}</span>
-         {item.amount && ` — ${item.amount} USDC`}
-         {item.protocol && ` via ${item.protocol}`}
-         {!item.amount && !item.protocol && item.summary && ` — ${item.summary}`}
-        </div>
-        <span className={`status-tag ${item.status}`}>{item.status}</span>
-        </div>
-       {item.txHash ? (
-      <a
-          href={`https://testnet.arcscan.app/tx/${item.txHash}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ fontSize: '0.8rem', color: 'var(--sky-light)', fontFamily: 'monospace', textDecoration: 'none' }}
-         >
-          {item.txHash.slice(0, 10)}...{item.txHash.slice(-8)} ↗
-       </a>
-        ) : (
-        item.status === 'pending' && (
-        <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>Awaiting on-chain confirmation</span>
-       )
-      )}
-     </div>
-      ))
+                <div key={item.id} className="activity-item" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '6px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                    <div>
+                      <span className="activity-kind">{item.kind}</span>
+                      {item.amount && ` — ${item.amount} USDC`}
+                      {item.protocol && ` via ${item.protocol}`}
+                      {!item.amount && !item.protocol && item.summary && ` — ${item.summary}`}
+                    </div>
+                    <span className={`status-tag ${item.status}`}>{item.status}</span>
+                  </div>
+                  {item.txHash ? (
+                    <a
+                      href={`https://testnet.arcscan.app/tx/${item.txHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ fontSize: '0.8rem', color: 'var(--sky-light)', fontFamily: 'monospace', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                    >
+                      <span>{item.txHash.slice(0, 10)}...{item.txHash.slice(-8)}</span>
+                      <ExternalLink size={12} />
+                    </a>
+                  ) : (
+                    item.status === 'pending' && (
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>Awaiting on-chain confirmation</span>
+                    )
+                  )}
+                </div>
+              ))
             )}
           </div>
         </main>
       )}
 
-      {/* TAB 5: Arc Explorer */}
-      {activeTab === 'explorer' && (
+      {/* FEATURE SUBPAGE 4: Arc Ecosystem Hub */}
+      {activeTab === 'ecosystem' && (
         <main className="main-grid">
           <section className="glass-panel">
-            <h2 className="panel-title">📰 Arc Ecosystem News</h2>
+            <h2 className="panel-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Globe size={20} color="var(--sky-light)" /> Arc Ecosystem News
+            </h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {news.map((item) => (
-            <a
-              key={item.id}
-              href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="perm-card"
-              style={{ display: 'block', textDecoration: 'none' }}
-             >
-              <div style={{ fontWeight: 600, color: 'var(--sky-light)' }}>{item.title}</div>
-              <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{item.summary}</p>
-            </a>
-             ))}
+                <a
+                  key={item.id}
+                  href={item.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="perm-card"
+                  style={{ display: 'block', textDecoration: 'none' }}
+                >
+                  <div style={{ fontWeight: 600, color: 'var(--sky-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span>{item.title}</span>
+                    <ExternalLink size={14} />
+                  </div>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>{item.summary}</p>
+                </a>
+              ))}
             </div>
           </section>
 
           <aside className="glass-panel">
-            <h2 className="panel-title">📱 Curated Arc dApps</h2>
+            <h2 className="panel-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Globe size={20} color="var(--sky-light)" /> Curated Arc dApps
+            </h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {dapps.map((item) => (
-            <a
-              key={item.id}
-              href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="activity-item"
-              style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '4px', textDecoration: 'none' }}
-             >
-            <div style={{ fontWeight: 600, color: '#fff' }}>{item.name} <span style={{ fontSize: '0.75rem', color: 'var(--sky-light)' }}>({item.category})</span></div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{item.summary}</div>
-            </a>
-           ))}
+                <a
+                  key={item.id}
+                  href={item.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="activity-item"
+                  style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '4px', textDecoration: 'none' }}
+                >
+                  <div style={{ fontWeight: 600, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                    <span>{item.name} <span style={{ fontSize: '0.75rem', color: 'var(--sky-light)' }}>({item.category})</span></span>
+                    <ExternalLink size={14} color="var(--sky-light)" />
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{item.summary}</div>
+                </a>
+              ))}
             </div>
           </aside>
         </main>
