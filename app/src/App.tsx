@@ -37,9 +37,14 @@ type ConfirmationState = {
 type ActivityItem = {
   id: string;
   kind: string;
-  summary: string;
   status: string;
+  summary?: string;
+  walletAddress?: string;
+  amount?: string;
+  protocol?: string;
+  txHash?: string;
   permissionCardId?: string;
+  createdAt?: string;
   quote?: {
     kind: string;
     amount: string;
@@ -949,13 +954,32 @@ function App() {
               <p style={{ color: 'var(--text-dim)' }}>No audit events logged yet.</p>
             ) : (
               activities.map((item) => (
-                <div key={item.id} className="activity-item">
-                  <div>
-                    <span className="activity-kind">{item.kind}</span> — {item.summary}
-                  </div>
-                  <span className={`status-tag ${item.status}`}>{item.status}</span>
-                </div>
-              ))
+         <div key={item.id} className="activity-item" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '6px' }}>
+         <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+         <div>
+         <span className="activity-kind">{item.kind}</span>
+         {item.amount && ` — ${item.amount} USDC`}
+         {item.protocol && ` via ${item.protocol}`}
+         {!item.amount && !item.protocol && item.summary && ` — ${item.summary}`}
+        </div>
+        <span className={`status-tag ${item.status}`}>{item.status}</span>
+        </div>
+       {item.txHash ? (
+      <a
+          href={`https://testnet.arcscan.app/tx/${item.txHash}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ fontSize: '0.8rem', color: 'var(--sky-light)', fontFamily: 'monospace', textDecoration: 'none' }}
+         >
+          {item.txHash.slice(0, 10)}...{item.txHash.slice(-8)} ↗
+       </a>
+        ) : (
+        item.status === 'pending' && (
+        <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>Awaiting on-chain confirmation</span>
+       )
+      )}
+     </div>
+      ))
             )}
           </div>
         </main>
