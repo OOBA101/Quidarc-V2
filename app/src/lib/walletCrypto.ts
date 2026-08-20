@@ -165,3 +165,113 @@ export function loadEncryptedWallet(): EncryptedWalletRecord | null {
 export function clearStoredWallet() {
   window.localStorage.removeItem(WALLET_STORAGE_KEY);
 }
+
+// --- Multi-wallet storage layer ---
+
+export interface WalletListEntry extends EncryptedWalletRecord {
+  label: string;
+}
+
+const WALLET_LIST_STORAGE_KEY = 'quidarc.wallets.v2';
+const ACTIVE_WALLET_KEY = 'quidarc.active_wallet.v2';
+
+export function saveWalletList(list: WalletListEntry[]) {
+  window.localStorage.setItem(WALLET_LIST_STORAGE_KEY, JSON.stringify(list));
+}
+
+export function getActiveWalletAddress(): string | null {
+  return window.localStorage.getItem(ACTIVE_WALLET_KEY);
+}
+
+export function setActiveWalletAddress(address: string | null) {
+  if (address) {
+    window.localStorage.setItem(ACTIVE_WALLET_KEY, address);
+  } else {
+    window.localStorage.removeItem(ACTIVE_WALLET_KEY);
+  }
+}
+
+export function loadWalletList(): WalletListEntry[] {
+  const raw = window.localStorage.getItem(WALLET_LIST_STORAGE_KEY);
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as WalletListEntry[];
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    } catch {
+      // Fall through if corrupt
+    }
+  }
+
+  // Auto-migration path for pre-existing single wallet
+  const legacy = loadEncryptedWallet();
+  if (legacy && legacy.address) {
+    const entry: WalletListEntry = { ...legacy, label: 'Wallet 1' };
+    const list = [entry];
+    saveWalletList(list);
+    setActiveWalletAddress(entry.address);
+    return list;
+  }
+
+  return [];
+}
+
+export function addWalletToList(
+  record: EncryptedWalletRecord,
+  label?: string
+): { list: WalletListEntry[]; entry: WalletListEntry; isExisting: boolean } {
+  const list = loadWalletList();
+  const existingIdx = list.findIndex(
+    (w) => w.address.toLowerCase() === record.address.toLowerCase()
+  );
+
+  if (existingIdx >= 0) {
+    const updatedEntry: WalletListEntry = {
+      ...record,
+      label: label?.trim() || list[existingIdx].label || `Wallet ${existingIdx + 1}`,
+    };
+    list[existingIdx] = updatedEntry;
+    saveWalletList(list);
+    return { list, entry: updatedEntry, isExisting: true };
+  }
+
+  const walletLabel = label?.trim() || `Wallet ${list.length + 1}`;
+  const newEntry: WalletListEntry = { ...record, label: walletLabel };
+  const updatedList = [...list, newEntry];
+  saveWalletList(updatedList);
+  return { list: updatedList, entry: newEntry, isExisting: false };
+}
+
+export function removeWalletFromList(address: string): WalletListEntry[] {
+  const list = loadWalletList();
+  const updatedList = list.filter(
+    (w) => w.address.toLowerCase() !== address.toLowerCase()
+  );
+  saveWalletList(updatedList);
+
+  const active = getActiveWalletAddress();
+  if (active && active.toLowerCase() === address.toLowerCase()) {
+    if (updatedList.length > 0) {
+      setActiveWalletAddress(updatedList[0].address);
+    } else {
+      setActiveWalletAddress(null);
+      clearStoredWallet();
+    }
+  }
+  return updatedList;
+}
+
+export function loadActiveWallet(): WalletListEntry | null {
+  const list = loadWalletList();
+  if (list.length === 0) return null;
+
+  const activeAddr = getActiveWalletAddress();
+  if (activeAddr) {
+    const found = list.find((w) => w.address.toLowerCase() === activeAddr.toLowerCase());
+    if (found) return found;
+  }
+
+  setActiveWalletAddress(list[0].address);
+  return list[0];
+}

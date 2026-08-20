@@ -7,7 +7,15 @@ import {
   saveEncryptedWallet,
   loadEncryptedWallet,
   detectSecretKind,
+  loadWalletList,
+  addWalletToList,
+  removeWalletFromList,
+  getActiveWalletAddress,
+  setActiveWalletAddress,
+  loadActiveWallet,
+  clearStoredWallet,
   type EncryptedWalletRecord,
+  type WalletListEntry,
 } from './lib/walletCrypto';
 import { signAndSendUsdcTransfer, USDC_DECIMALS } from './lib/arcChain';
 import { parseUnits } from 'viem';
@@ -29,6 +37,9 @@ import {
   Copy,
   ExternalLink,
   Zap,
+  Plus,
+  Trash2,
+  Check,
 } from 'lucide-react';
 
 type PermissionCard = {
@@ -42,7 +53,7 @@ type PermissionCard = {
   spentToday?: number;
 };
 
-type WalletRecord = EncryptedWalletRecord & { chainId: number };
+type WalletRecord = EncryptedWalletRecord & { chainId: number; label?: string };
 
 type NewsItem = { id: string; title: string; summary: string; url: string };
 type DAppItem = { id: string; name: string; category: string; summary: string; url: string };
@@ -83,7 +94,7 @@ const AVAILABLE_ACTIONS = ['swap', 'transfer', 'bridge', 'claim'];
 
 function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'chat' | 'permissions' | 'audit' | 'ecosystem'>('home');
-  const [activeAction, setActiveAction] = useState<'none' | 'send' | 'receive' | 'security' | 'password'>('none');
+  const [activeAction, setActiveAction] = useState<'none' | 'send' | 'receive' | 'security' | 'password' | 'import' | 'delete'>('none');
   const [isActionsOpen, setIsActionsOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [chatHistory, setChatHistory] = useState<ChatTurn[]>([
@@ -96,6 +107,12 @@ function App() {
   ]);
   
   const [wallet, setWallet] = useState<WalletRecord | null>(null);
+  const [wallets, setWallets] = useState<WalletListEntry[]>([]);
+  const [newWalletLabel, setNewWalletLabel] = useState('');
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+  const [toastMessage, setToastMessage] = useState<{ text: string; type?: 'success' | 'info' } | null>(null);
+
   const [walletPassword, setWalletPassword] = useState('');
   const [walletSeed, setWalletSeed] = useState('');
   const [revealPassword, setRevealPassword] = useState('');
@@ -124,41 +141,37 @@ function App() {
   const [dapps, setDapps] = useState<DAppItem[]>([]);
   const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-  const stored = loadEncryptedWallet();
-  if (stored) {
-    setWallet({ ...stored, chainId: 5042002 });
-    refreshBalance(stored.address);
-    loadWalletScopedData(stored.address);
-  }
+  const triggerToast = (text: string, type: 'success' | 'info' = 'success') => {
+    setToastMessage({ text, type });
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 3500);
+  };
 
-  loadJson<{ items: NewsItem[] }>('/news', (payload) => setNews(payload.items || []), 'news');
-  loadJson<{ items: DAppItem[] }>('/dapps', (payload) => setDapps(payload.items || []), 'dapps');
-}, []);
-
-    const loadJson = async <T,>(path: string, onSuccess: (data: T) => void, label: string) => {
-  try {
-    const res = await fetch(`${API_BASE}${path}`);
-    if (!res.ok) {
-      console.error(`[${label}] ${res.status} from ${API_BASE}${path}`, await res.text());
-      return;
+  const loadJson = async <T,>(path: string, onSuccess: (data: T) => void, label: string) => {
+    try {
+      const res = await fetch(`${API_BASE}${path}`);
+      if (!res.ok) {
+        console.error(`[${label}] ${res.status} from ${API_BASE}${path}`, await res.text());
+        return;
+      }
+      onSuccess(await res.json());
+    } catch (err) {
+      console.error(`[${label}] fetch failed against ${API_BASE}${path}`, err);
     }
-    onSuccess(await res.json());
-  } catch (err) {
-    console.error(`[${label}] fetch failed against ${API_BASE}${path}`, err);
-  }
-};
+  };
 
-const loadWalletScopedData = (address: string) => {
-  loadJson<{ cards: PermissionCard[] }>(`/permissions?ownerWallet=${encodeURIComponent(address)}`, (payload) => {
-    const cardsList = payload.cards || [];
-    setPermissions(cardsList);
-    const active = cardsList.find((c) => c.status === 'active');
-    if (active) setSelectedCardId(active.id);
-  }, 'permissions');
+  const loadWalletScopedData = (address: string) => {
+    loadJson<{ cards: PermissionCard[] }>(`/permissions?ownerWallet=${encodeURIComponent(address)}`, (payload) => {
+      const cardsList = payload.cards || [];
+      setPermissions(cardsList);
+      const active = cardsList.find((c) => c.status === 'active');
+      if (active) setSelectedCardId(active.id);
+      else setSelectedCardId(cardsList[0]?.id || '');
+    }, 'permissions');
 
-  loadJson<{ entries: ActivityItem[] }>(`/audit?walletAddress=${encodeURIComponent(address)}`, (payload) => setActivities(payload.entries || []), 'audit');
-};
+    loadJson<{ entries: ActivityItem[] }>(`/audit?walletAddress=${encodeURIComponent(address)}`, (payload) => setActivities(payload.entries || []), 'audit');
+  };
 
   const refreshBalance = async (address: string) => {
     try {
@@ -182,48 +195,136 @@ const loadWalletScopedData = (address: string) => {
     }
   };
 
+  const handleSwitchWallet = (targetAddress: string) => {
+    const list = loadWalletList();
+    const target = list.find((w) => w.address.toLowerCase() === targetAddress.toLowerCase());
+    if (!target) return;
+
+    setActiveWalletAddress(target.address);
+    const rec: WalletRecord = { ...target, chainId: 5042002 };
+    setWallet(rec);
+    saveEncryptedWallet(target);
+    refreshBalance(target.address);
+    loadWalletScopedData(target.address);
+  };
+
+  useEffect(() => {
+    const list = loadWalletList();
+    setWallets(list);
+
+    const active = loadActiveWallet();
+    if (active) {
+      const rec: WalletRecord = { ...active, chainId: 5042002 };
+      setWallet(rec);
+      refreshBalance(active.address);
+      loadWalletScopedData(active.address);
+    }
+
+    loadJson<{ items: NewsItem[] }>('/news', (payload) => setNews(payload.items || []), 'news');
+    loadJson<{ items: DAppItem[] }>('/dapps', (payload) => setDapps(payload.items || []), 'dapps');
+  }, []);
+
   const handleCreateWallet = async () => {
-  if (walletPassword.length < 8) {
-    alert('Use a password with at least 8 characters.');
-    return;
-  }
+    if (walletPassword.length < 8) {
+      alert('Use a password with at least 8 characters.');
+      return;
+    }
 
-  const { account, secretForStorage } = createNewAccount();
-  const encrypted = await encryptPrivateKey(secretForStorage, walletPassword);
-  const record: WalletRecord = { ...encrypted, address: account.address, chainId: 5042002, createdAt: new Date().toISOString() };
+    const { account, secretForStorage } = createNewAccount();
+    const encrypted = await encryptPrivateKey(secretForStorage, walletPassword);
+    const baseRecord: EncryptedWalletRecord = { ...encrypted, address: account.address, createdAt: new Date().toISOString() };
 
-  setWallet(record);
-  saveEncryptedWallet(record);
-  setWalletPassword('');
-  setWalletSeed('');
-  await refreshBalance(record.address);
-  loadWalletScopedData(record.address);
-};
+    const { list, entry } = addWalletToList(baseRecord, newWalletLabel || undefined);
+    setWallets(list);
+    setActiveWalletAddress(entry.address);
+
+    const record: WalletRecord = { ...entry, chainId: 5042002 };
+
+    setWallet(record);
+    saveEncryptedWallet(entry);
+    setWalletPassword('');
+    setWalletSeed('');
+    setNewWalletLabel('');
+    await refreshBalance(entry.address);
+    loadWalletScopedData(entry.address);
+    triggerToast(`Created ${entry.label} successfully`, 'success');
+  };
 
   const handleImportWallet = async () => {
-  if (walletPassword.length < 8 || !walletSeed.trim()) {
-    alert('Enter a seed phrase or private key and a password of at least 8 characters.');
-    return;
-  }
+    if (walletPassword.length < 8 || !walletSeed.trim()) {
+      alert('Enter a seed phrase or private key and a password of at least 8 characters.');
+      return;
+    }
 
-  let imported;
-  try {
-    imported = importAccount(walletSeed);
-  } catch (error) {
-    alert((error as Error).message);
-    return;
-  }
+    let imported;
+    try {
+      imported = importAccount(walletSeed);
+    } catch (error) {
+      alert((error as Error).message);
+      return;
+    }
 
-  const encrypted = await encryptPrivateKey(imported.secretForStorage, walletPassword);
-  const record: WalletRecord = { ...encrypted, address: imported.account.address, chainId: 5042002, createdAt: new Date().toISOString() };
+    const encrypted = await encryptPrivateKey(imported.secretForStorage, walletPassword);
+    const baseRecord: EncryptedWalletRecord = { ...encrypted, address: imported.account.address, createdAt: new Date().toISOString() };
 
-  setWallet(record);
-  saveEncryptedWallet(record);
-  setWalletPassword('');
-  setWalletSeed('');
-  await refreshBalance(record.address);
-  loadWalletScopedData(record.address);
-};
+    const { list, entry, isExisting } = addWalletToList(baseRecord, newWalletLabel || undefined);
+    setWallets(list);
+    setActiveWalletAddress(entry.address);
+
+    const record: WalletRecord = { ...entry, chainId: 5042002 };
+
+    setWallet(record);
+    saveEncryptedWallet(entry);
+    setWalletPassword('');
+    setWalletSeed('');
+    setNewWalletLabel('');
+    setActiveAction('none');
+
+    await refreshBalance(entry.address);
+    loadWalletScopedData(entry.address);
+
+    if (isExisting) {
+      triggerToast(`Wallet ${entry.label} is already in your list — switched to it`, 'info');
+    } else {
+      triggerToast(`Imported ${entry.label} successfully`, 'success');
+    }
+  };
+
+  const handleDeleteWalletAction = async () => {
+    if (!wallet) return;
+    setDeleteError('');
+
+    try {
+      await decryptPrivateKey(wallet, deletePassword);
+    } catch {
+      setDeleteError('Incorrect password.');
+      return;
+    }
+
+    const targetAddr = wallet.address;
+    const targetLabel = wallet.label || 'Wallet';
+    const updatedList = removeWalletFromList(targetAddr);
+    setWallets(updatedList);
+    setDeletePassword('');
+    setActiveAction('none');
+
+    if (updatedList.length > 0) {
+      const nextActive = loadActiveWallet();
+      if (nextActive) {
+        const rec: WalletRecord = { ...nextActive, chainId: 5042002 };
+        setWallet(rec);
+        saveEncryptedWallet(nextActive);
+        refreshBalance(nextActive.address);
+        loadWalletScopedData(nextActive.address);
+        triggerToast(`Deleted ${targetLabel}. Switched to ${nextActive.label}`, 'info');
+      }
+    } else {
+      setWallet(null);
+      clearStoredWallet();
+      setActiveWalletAddress(null);
+      triggerToast('Wallet deleted. No wallets remaining.', 'info');
+    }
+  };
 
   const handleRevealSecret = async () => {
     if (!wallet) return;
@@ -555,10 +656,25 @@ const loadWalletScopedData = (address: string) => {
         </div>
 
         <div className="header-actions">
+          {wallets.length > 1 && (
+            <select
+              className="wallet-switcher-select"
+              value={wallet?.address || ''}
+              onChange={(e) => handleSwitchWallet(e.target.value)}
+              title="Switch Active Wallet"
+            >
+              {wallets.map((w) => (
+                <option key={w.address} value={w.address}>
+                  {w.label} ({w.address.slice(0, 6)}...{w.address.slice(-4)})
+                </option>
+              ))}
+            </select>
+          )}
+
           {wallet ? (
             <div className="wallet-pill">
               <span className="wallet-address" onClick={copyAddress} title="Click to copy address" style={{ cursor: 'pointer' }}>
-                {wallet.address.slice(0, 6)}...{wallet.address.slice(-4)} {copied ? '(Copied!)' : ''}
+                {wallet.label ? `${wallet.label}: ` : ''}{wallet.address.slice(0, 6)}...{wallet.address.slice(-4)} {copied ? '(Copied!)' : ''}
               </span>
               <span className="wallet-balance-chip">{walletBalance || '0 USDC'}</span>
             </div>
@@ -740,6 +856,22 @@ const loadWalletScopedData = (address: string) => {
                           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Update local encryption password</div>
                         </div>
                       </button>
+
+                      <button className="action-menu-item" onClick={() => { setActiveAction('import'); setIsActionsOpen(false); }}>
+                        <div className="action-menu-icon"><Plus size={16} /></div>
+                        <div>
+                          <div style={{ fontWeight: 600 }}>Import Another Wallet</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Add an existing seed phrase or key to your list</div>
+                        </div>
+                      </button>
+
+                      <button className="action-menu-item" onClick={() => { setActiveAction('delete'); setIsActionsOpen(false); }}>
+                        <div className="action-menu-icon" style={{ color: 'var(--danger)', background: 'rgba(239, 68, 68, 0.12)' }}><Trash2 size={16} /></div>
+                        <div>
+                          <div style={{ fontWeight: 600, color: 'var(--danger)' }}>Delete Active Wallet</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Remove this wallet from device (requires password)</div>
+                        </div>
+                      </button>
                     </div>
                   )}
 
@@ -857,6 +989,65 @@ const loadWalletScopedData = (address: string) => {
                       </div>
                     </div>
                   )}
+
+                  {activeAction === 'import' && (
+                    <div className="action-panel-box">
+                      <h3 className="panel-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Plus size={18} color="var(--sky-light)" /> Import Another Wallet
+                      </h3>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px', maxWidth: '500px' }}>
+                        <div className="form-group">
+                          <label className="form-label">Wallet Label (Optional)</label>
+                          <input className="input-field" value={newWalletLabel} onChange={(e) => setNewWalletLabel(e.target.value)} placeholder="e.g. Trading Wallet, Vault" />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Seed Phrase or Private Key</label>
+                          <input className="input-field" value={walletSeed} onChange={(e) => setWalletSeed(e.target.value)} placeholder="12/24 words or 0x... private key" />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Encryption Password (8+ chars)</label>
+                          <input className="input-field" type="password" value={walletPassword} onChange={(e) => setWalletPassword(e.target.value)} placeholder="Password for local encryption" />
+                        </div>
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                          <button className="btn-primary" onClick={handleImportWallet}>
+                            Import & Switch Wallet
+                          </button>
+                          <button className="btn-secondary" onClick={() => setActiveAction('none')}>
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeAction === 'delete' && wallet && (
+                    <div className="action-panel-box" style={{ border: '1px solid rgba(239, 68, 68, 0.4)' }}>
+                      <h3 className="panel-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--danger)' }}>
+                        <Trash2 size={18} color="var(--danger)" /> Delete {wallet.label || 'Wallet'} from Device
+                      </h3>
+
+                      <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: 'var(--radius-sm)', padding: '14px', margin: '12px 0', fontSize: '0.85rem', color: '#fca5a5', lineHeight: '1.5' }}>
+                        <strong>⚠️ PERMANENT WARNING:</strong> This removes <strong>{wallet.label || wallet.address.slice(0, 8)}</strong> from this device. If you haven't saved its recovery phrase or private key elsewhere, you will not be able to access it again through Quidarc. Funds on-chain are not affected — only this device's access to them.
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '500px' }}>
+                        <div className="form-group">
+                          <label className="form-label">Confirm Password to Delete</label>
+                          <input className="input-field" type="password" value={deletePassword} onChange={(e) => setDeletePassword(e.target.value)} placeholder="Password" />
+                        </div>
+                        {deleteError && <p style={{ color: 'var(--danger)', fontSize: '0.85rem', margin: 0 }}>{deleteError}</p>}
+
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                          <button className="btn-danger" onClick={handleDeleteWalletAction}>
+                            Confirm & Delete Wallet
+                          </button>
+                          <button className="btn-secondary" onClick={() => { setActiveAction('none'); setDeleteError(''); setDeletePassword(''); }}>
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </section>
             ) : (
@@ -869,6 +1060,10 @@ const loadWalletScopedData = (address: string) => {
                   Create a new wallet or import an existing key/seed phrase. Key material is encrypted locally in your browser and never sent to the server.
                 </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '500px' }}>
+                  <div className="form-group">
+                    <label className="form-label">Wallet Label (Optional)</label>
+                    <input className="input-field" value={newWalletLabel} onChange={(e) => setNewWalletLabel(e.target.value)} placeholder="e.g. Wallet 1, Trading Account" />
+                  </div>
                   <div className="form-group">
                     <label className="form-label">Encryption Password (8+ chars)</label>
                     <input className="input-field" type="password" value={walletPassword} onChange={(e) => setWalletPassword(e.target.value)} placeholder="Password" />
@@ -1227,6 +1422,13 @@ const loadWalletScopedData = (address: string) => {
             </div>
           </aside>
         </main>
+      )}
+      {/* Toast Notification Container */}
+      {toastMessage && (
+        <div className="toast-notification" onClick={() => setToastMessage(null)}>
+          <Check size={18} color="#22c55e" />
+          <span>{toastMessage.text}</span>
+        </div>
       )}
     </div>
   );
